@@ -43,14 +43,14 @@
                 <p class="text-sm md:text-base text-amber-800 mt-2 font-medium">点击右侧知识点开始填空刷题，连续答对 3 题即可点亮绿叶。</p>
             </div>
 
-            <!-- 多孩子/学员身份切换栏（云端实时同步） -->
+            <!-- 多孩子/学员身份切换栏 -->
             <div class="bg-amber-100/80 rounded-2xl p-3.5 flex items-center justify-between gap-3 border border-amber-200/80 shadow-sm max-w-md mx-auto lg:mx-0 w-full">
                 <div class="flex items-center gap-2">
                     <span class="text-sm font-bold text-amber-950 flex items-center gap-1">
                         👤 当前刷题娃：
                     </span>
                     <select id="profile-select" onchange="switchProfile(this.value)" class="bg-white border-2 border-amber-300 font-bold text-amber-900 text-sm rounded-xl px-3 py-1.5 focus:outline-none focus:border-amber-500 shadow-sm cursor-pointer">
-                        <option value="">加载云端名单...</option>
+                        <option value="DUDU">DUDU</option>
                     </select>
                 </div>
                 <button onclick="addNewProfile()" class="text-xs bg-amber-700 hover:bg-amber-800 text-white font-bold px-3 py-2 rounded-xl transition shadow-sm flex items-center gap-1">
@@ -102,7 +102,7 @@
 
     <!-- 页脚 -->
     <footer class="text-center text-xs text-amber-700/60 mt-4">
-        © 春季15讲专项树 (已连接云端题库与全端同步)
+        © 春季15讲专项树 (已连接云端题库)
     </footer>
 
     <!-- 刷题弹窗 (Modal) -->
@@ -199,9 +199,9 @@
             15: "第15讲 行程问题"
         };
 
-        // ==================== 2. 云端多学员/娃身份进度管理器 ====================
-        let allStudentProfiles = []; // 云端完整的学员列表与数据
-        let profiles = [];
+        // ==================== 2. 多孩子/学员身份进度管理器 (带本地兜底) ====================
+        let allStudentProfiles = [];
+        let profiles = ["DUDU"];
         let currentProfile = "DUDU";
         let userProgress = {};
 
@@ -213,7 +213,28 @@
             return prog;
         }
 
-        // 从 Supabase 实时同步所有学员数据
+        // 初始化本地兜底，确保树能够第一时间 100% 渲染呈现
+        function initLocalFallback() {
+            profiles = ["DUDU"];
+            currentProfile = "DUDU";
+            userProgress = createDefaultProgress();
+            
+            // 读取本地缓存的 profile
+            const savedProfiles = localStorage.getItem('math_tree_profiles');
+            if (savedProfiles) profiles = JSON.parse(savedProfiles);
+            
+            const savedCurrent = localStorage.getItem('math_tree_current_profile');
+            if (savedCurrent && profiles.includes(savedCurrent)) currentProfile = savedCurrent;
+
+            const savedProg = localStorage.getItem(`math_tree_progress_${currentProfile}`);
+            if (savedProg) userProgress = JSON.parse(savedProg);
+
+            renderProfileSelect();
+            renderTree();
+            updateStats();
+        }
+
+        // 向 Supabase 异步拉取同步学员数据
         async function loadProfilesFromSupabase() {
             try {
                 const { data, error } = await supabaseClient
@@ -221,31 +242,31 @@
                     .select('*')
                     .order('id', { ascending: true });
 
-                if (error) throw error;
-
-                if (!data || data.length === 0) {
-                    // 如果云端为空，自动插入默认学员 DUDU
-                    await supabaseClient.from(TABLE_PROFILES).insert([{ name: 'DUDU', progress: createDefaultProgress() }]);
-                    return await loadProfilesFromSupabase();
+                if (error) {
+                    console.warn("未能在 Supabase 找到 student_profiles 表，继续使用本地数据:", error.message);
+                    return;
                 }
 
-                allStudentProfiles = data;
-                profiles = data.map(item => item.name);
+                if (data && data.length > 0) {
+                    allStudentProfiles = data;
+                    profiles = data.map(item => item.name);
 
-                // 读取上次选择的学员，若无则默认选第一个
-                const savedCurrent = localStorage.getItem('math_tree_current_profile');
-                if (savedCurrent && profiles.includes(savedCurrent)) {
-                    currentProfile = savedCurrent;
+                    if (!profiles.includes(currentProfile)) {
+                        currentProfile = profiles[0];
+                    }
+
+                    renderProfileSelect();
+                    syncCurrentProgressFromMemory();
+                    renderTree();
+                    updateStats();
                 } else {
-                    currentProfile = profiles[0];
+                    // 云端表空时尝试插入默认 DUDU
+                    try {
+                        await supabaseClient.from(TABLE_PROFILES).insert([{ name: 'DUDU', progress: createDefaultProgress() }]);
+                    } catch (e) {}
                 }
-
-                renderProfileSelect();
-                syncCurrentProgressFromMemory();
-                renderTree();
-                updateStats();
             } catch (err) {
-                console.error("同步云端学员失败:", err);
+                console.warn("同步云端学员失败，保持本地渲染:", err);
             }
         }
 
@@ -254,7 +275,9 @@
             if (currentRecord && currentRecord.progress && Object.keys(currentRecord.progress).length > 0) {
                 userProgress = currentRecord.progress;
             } else {
-                userProgress = createDefaultProgress();
+                const savedProg = localStorage.getItem(`math_tree_progress_${currentProfile}`);
+                if (savedProg) userProgress = JSON.parse(savedProg);
+                else userProgress = createDefaultProgress();
             }
         }
 
@@ -281,7 +304,6 @@
             updateStats();
         }
 
-        // 新增娃并实时上传 Supabase
         async function addNewProfile() {
             const pwd = prompt("新增学员需要管理员权限，请输入密码：");
             if (!pwd) return;
@@ -301,39 +323,40 @@
                 return;
             }
 
+            // 本地更新
+            if (!profiles.includes(cleanName)) profiles.push(cleanName);
+            localStorage.setItem('math_tree_profiles', JSON.stringify(profiles));
+
             // 上传至 Supabase
             try {
                 const newProgress = createDefaultProgress();
-                const { error } = await supabaseClient
-                    .from(TABLE_PROFILES)
-                    .insert([{ name: cleanName, progress: newProgress }]);
-
-                if (error) throw error;
-
-                currentProfile = cleanName;
-                localStorage.setItem('math_tree_current_profile', currentProfile);
-                await loadProfilesFromSupabase();
+                await supabaseClient.from(TABLE_PROFILES).insert([{ name: cleanName, progress: newProgress }]);
             } catch (err) {
-                alert("同步至云端失败：" + err.message);
+                console.warn("保存新学员至云端失败:", err);
             }
+            
+            switchProfile(cleanName);
+            renderProfileSelect();
         }
 
-        // 将最新答题进度同步保存至 Supabase
         async function saveProgressToSupabase() {
-            try {
-                // 本地内存实时更新
-                const currentRecord = allStudentProfiles.find(item => item.name === currentProfile);
-                if (currentRecord) {
-                    currentRecord.progress = userProgress;
-                }
+            // 本地存储
+            localStorage.setItem(`math_tree_progress_${currentProfile}`, JSON.stringify(userProgress));
 
-                // 异步提交云端
+            // 内存缓存更新
+            const currentRecord = allStudentProfiles.find(item => item.name === currentProfile);
+            if (currentRecord) {
+                currentRecord.progress = userProgress;
+            }
+
+            // 云端同步
+            try {
                 await supabaseClient
                     .from(TABLE_PROFILES)
                     .update({ progress: userProgress })
                     .eq('name', currentProfile);
             } catch (err) {
-                console.error("云端进度同步失败:", err);
+                console.warn("云端进度同步失败:", err);
             }
         }
 
@@ -356,6 +379,8 @@
         function renderTree() {
             const branchesGroup = document.getElementById('branches-group');
             const nodesGroup = document.getElementById('nodes-group');
+            if (!branchesGroup || !nodesGroup) return;
+
             branchesGroup.innerHTML = '';
             nodesGroup.innerHTML = '';
 
@@ -465,21 +490,28 @@
             document.getElementById('stat-red').textContent = redCount;
         }
 
-        // ==================== 5. 排行榜统计逻辑 (云端全员实时) ====================
+        // ==================== 5. 排行榜统计逻辑 ====================
         function openLeaderboard() {
             const listContainer = document.getElementById('leaderboard-list');
             listContainer.innerHTML = '';
 
-            const leaderboardData = allStudentProfiles.map(student => {
-                const prog = student.progress || {};
+            const leaderboardData = profiles.map(profileName => {
+                let prog = {};
+                const cloudRecord = allStudentProfiles.find(item => item.name === profileName);
+                if (cloudRecord && cloudRecord.progress) {
+                    prog = cloudRecord.progress;
+                } else {
+                    const saved = localStorage.getItem(`math_tree_progress_${profileName}`);
+                    if (saved) prog = JSON.parse(saved);
+                }
+
                 let green = 0, yellow = 0, red = 15;
-                
                 for (let i = 1; i <= 15; i++) {
                     if (prog[i] && prog[i].status === 'green') green++;
                     else if (prog[i] && prog[i].status === 'yellow') yellow++;
                     else red++;
                 }
-                return { name: student.name, green, yellow, red };
+                return { name: profileName, green, yellow, red };
             });
 
             leaderboardData.sort((a, b) => {
@@ -613,4 +645,113 @@
             const actionBtn = document.getElementById('action-btn');
             actionBtn.disabled = true;
             actionBtn.textContent = "无可用题目";
-            actionBtn.class
+            actionBtn.className = "w-full py-3 rounded-xl font-semibold bg-gray-200 text-gray-400 cursor-not-allowed";
+        }
+
+        function loadQuestion() {
+            if (!currentActiveQuestions || currentActiveQuestions.length === 0) return;
+
+            isAnswered = false;
+
+            const qIndex = currentQuestionIndex % currentActiveQuestions.length;
+            const currentQ = currentActiveQuestions[qIndex];
+
+            document.getElementById('question-text').textContent = currentQ.q;
+
+            const inputElem = document.getElementById('answer-input');
+            inputElem.value = '';
+            inputElem.disabled = false;
+            inputElem.className = "w-full p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-amber-500 font-semibold text-gray-800 transition";
+
+            document.getElementById('feedback-box').className = 'hidden mb-4 p-3 rounded-lg text-sm text-center font-semibold';
+            
+            const actionBtn = document.getElementById('action-btn');
+            actionBtn.disabled = true;
+            actionBtn.textContent = "请先输入答案";
+            actionBtn.className = "w-full py-3 rounded-xl font-semibold transition bg-gray-200 text-gray-400 cursor-not-allowed";
+
+            setTimeout(() => inputElem.focus(), 100);
+        }
+
+        function handleInputChange() {
+            if (isAnswered) return;
+
+            const val = document.getElementById('answer-input').value.trim();
+            const actionBtn = document.getElementById('action-btn');
+
+            if (val !== '') {
+                actionBtn.disabled = false;
+                actionBtn.textContent = "确认提交";
+                actionBtn.className = "w-full py-3 rounded-xl font-semibold transition bg-amber-600 text-white hover:bg-amber-700 cursor-pointer shadow-md";
+            } else {
+                actionBtn.disabled = true;
+                actionBtn.textContent = "请先输入答案";
+                actionBtn.className = "w-full py-3 rounded-xl font-semibold transition bg-gray-200 text-gray-400 cursor-not-allowed";
+            }
+        }
+
+        async function handleActionClick() {
+            if (!currentActiveQuestions || currentActiveQuestions.length === 0) return;
+
+            const qIndex = currentQuestionIndex % currentActiveQuestions.length;
+            const currentQ = currentActiveQuestions[qIndex];
+
+            const feedbackBox = document.getElementById('feedback-box');
+            const actionBtn = document.getElementById('action-btn');
+            const inputElem = document.getElementById('answer-input');
+
+            if (!isAnswered) {
+                const userVal = inputElem.value.trim();
+                if (userVal === '') return;
+
+                isAnswered = true;
+                inputElem.disabled = true;
+
+                const isCorrect = (userVal.toLowerCase() === String(currentQ.answer).trim().toLowerCase());
+
+                if (!userProgress[currentActiveNodeId]) {
+                    userProgress[currentActiveNodeId] = { consecutiveCorrect: 0, status: 'red', attempted: false };
+                }
+                const progress = userProgress[currentActiveNodeId];
+                progress.attempted = true;
+
+                if (isCorrect) {
+                    inputElem.className = "w-full p-3 border-2 border-emerald-500 bg-emerald-50 text-emerald-900 font-bold rounded-xl transition";
+                    progress.consecutiveCorrect += 1;
+                    feedbackBox.textContent = "回答正确！🎉 连续答对次数 +1";
+                    feedbackBox.className = "mb-4 p-3 rounded-lg text-sm text-center font-semibold bg-emerald-100 text-emerald-800 block";
+                } else {
+                    inputElem.className = "w-full p-3 border-2 border-rose-500 bg-rose-50 text-rose-900 font-bold rounded-xl transition";
+                    progress.consecutiveCorrect = 0;
+                    feedbackBox.textContent = `回答错误 😢 正确答案是：${currentQ.answer}`;
+                    feedbackBox.className = "mb-4 p-3 rounded-lg text-sm text-center font-semibold bg-rose-100 text-rose-800 block";
+                }
+
+                if (progress.consecutiveCorrect >= 3) {
+                    progress.status = 'green';
+                } else {
+                    progress.status = 'yellow';
+                }
+
+                await saveProgressToSupabase();
+                renderTree();
+                updateStats();
+                updateModalUI();
+
+                actionBtn.textContent = "下一题";
+
+            } else {
+                currentQuestionIndex++;
+                loadQuestion();
+            }
+        }
+
+        // ==================== 7. 初始化启动 ====================
+        // 1. 先进行本地兜底渲染（确保画面立刻 100% 出现）
+        initLocalFallback();
+        
+        // 2. 异步同步 Supabase 云端学员数据
+        loadProfilesFromSupabase();
+    </script>
+</body>
+</html>
