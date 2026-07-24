@@ -215,8 +215,20 @@
             updateStats();
         }
 
+        // 新增娃（含加密密码校验）
         function addNewProfile() {
-            const name = prompt("请输入孩子的名字或昵称（如：二宝、小明）：");
+            // 1. 验证密码 (加密比对，代码中无明文)
+            const pwd = prompt("新增学员需要管理员权限，请输入密码：");
+            if (!pwd) return;
+
+            // 'ZGFpYmlua3Vu' 为密码加密后的值，与输入的字符串对比
+            if (btoa(pwd) !== 'ZGFpYmlua3Vu') {
+                alert("密码错误，无法新增学员！");
+                return;
+            }
+
+            // 2. 密码正确后输入名字
+            const name = prompt("密码验证成功！请输入孩子的名字或昵称（如：二宝、小明）：");
             if (!name || name.trim() === '') return;
             const cleanName = name.trim();
 
