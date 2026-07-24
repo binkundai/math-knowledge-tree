@@ -40,7 +40,7 @@
         <div class="w-full lg:w-2/5 flex flex-col justify-center space-y-5 text-center lg:text-left">
             <div>
                 <h1 class="text-3xl md:text-4xl font-extrabold text-amber-950 tracking-tight">春季拔尖知识树</h1>
-                <p class="text-sm md:text-base text-amber-800 mt-2 font-medium">点击右侧知识点开始刷题，连续答对3题即可点亮绿叶。</p>
+                <p class="text-sm md:text-base text-amber-800 mt-2 font-medium">点击知识树开始随机抽题，连续答对 3 题即可点亮绿叶。</p>
             </div>
 
             <!-- 多孩子/学员身份切换栏 -->
@@ -107,7 +107,7 @@
 
     <!-- 刷题弹窗 (Modal) -->
     <div id="quiz-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative animate-fade-in">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative animate-fade-in max-h-[90vh] overflow-y-auto">
             <!-- 关闭按钮 -->
             <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 rounded-lg transition" aria-label="关闭">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,9 +125,15 @@
                 <span>当前连续答对：<strong id="modal-streak" class="text-emerald-600">0/3</strong></span>
             </div>
 
-            <!-- 问题与填空输入区域 -->
+            <!-- 问题、配图与填空输入区域 -->
             <div id="question-box" class="mb-6">
-                <p class="text-gray-800 font-semibold mb-4 leading-relaxed" id="question-text">加载中...</p>
+                <p class="text-gray-800 font-semibold mb-3 leading-relaxed" id="question-text">加载中...</p>
+                
+                <!-- 配图展示区域（有配图时自动显示，无图自动隐藏） -->
+                <div id="image-container" class="mb-4 flex justify-center hidden">
+                    <img id="question-image" src="" alt="题目配图" class="max-h-56 max-w-full rounded-xl border border-amber-200/80 shadow-sm object-contain" />
+                </div>
+
                 <div id="input-container" class="space-y-2">
                     <label class="block text-xs text-gray-500 font-medium">请在下方填入最终答案：</label>
                     <input type="text" id="answer-input" 
@@ -151,7 +157,6 @@
     <!-- 排行榜弹窗 (Leaderboard Modal) -->
     <div id="leaderboard-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl relative animate-fade-in max-h-[80vh] flex flex-col">
-            <!-- 关闭按钮 -->
             <button onclick="closeLeaderboard()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 rounded-lg transition" aria-label="关闭">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -165,10 +170,7 @@
             
             <p class="text-xs text-gray-500 mb-4">根据已掌握（点亮绿叶）的知识点数量进行排序排名。</p>
 
-            <!-- 榜单列表区域 -->
-            <div class="overflow-y-auto flex-1 pr-1 space-y-2.5" id="leaderboard-list">
-                <!-- 动态填充 -->
-            </div>
+            <div class="overflow-y-auto flex-1 pr-1 space-y-2.5" id="leaderboard-list"></div>
         </div>
     </div>
 
@@ -199,6 +201,16 @@
             15: "第15讲 行程问题"
         };
 
+        // 随机洗牌算法 (Fisher-Yates Shuffle)
+        function shuffleArray(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
         // ==================== 2. 多孩子/学员身份进度管理器 (带本地兜底) ====================
         let allStudentProfiles = [];
         let profiles = ["DUDU"];
@@ -213,7 +225,6 @@
             return prog;
         }
 
-        // 初始化本地兜底，确保树能够第一时间 100% 渲染呈现
         function initLocalFallback() {
             profiles = ["DUDU"];
             currentProfile = "DUDU";
@@ -233,7 +244,6 @@
             updateStats();
         }
 
-        // 向 Supabase 异步拉取同步学员数据
         async function loadProfilesFromSupabase() {
             try {
                 const { data, error } = await supabaseClient
@@ -483,7 +493,7 @@
             document.getElementById('stat-red').textContent = redCount;
         }
 
-        // ==================== 5. 排行榜统计逻辑 (已修复 Bug) ====================
+        // ==================== 5. 排行榜逻辑 ====================
         function openLeaderboard() {
             const listContainer = document.getElementById('leaderboard-list');
             listContainer.innerHTML = '';
@@ -498,7 +508,6 @@
                     if (saved) prog = JSON.parse(saved);
                 }
 
-                // 修复：初始化基数为 0
                 let green = 0, yellow = 0, red = 0;
                 for (let i = 1; i <= 15; i++) {
                     if (prog[i] && prog[i].status === 'green') green++;
@@ -550,7 +559,7 @@
             document.getElementById('leaderboard-modal').classList.add('hidden');
         }
 
-        // ==================== 6. 云端异步拉取与刷题逻辑 ====================
+        // ==================== 6. 云端拉取、随机抽题与配图渲染 ====================
         let currentActiveNodeId = null;
         let currentActiveQuestions = [];
         let currentQuestionIndex = 0;
@@ -576,10 +585,15 @@
                 if (error) throw error;
 
                 if (data && data.length > 0) {
-                    currentActiveQuestions = data.map(item => ({
+                    const rawQuestions = data.map(item => ({
                         q: item.question,
-                        answer: item.answer
+                        answer: item.answer,
+                        image_url: item.image_url || '' // 支持配图字段
                     }));
+
+                    // 核心修改：从题库中进行随机洗牌抽题
+                    currentActiveQuestions = shuffleArray(rawQuestions);
+
                     document.getElementById('input-container').classList.remove('hidden');
                     loadQuestion();
                 } else {
@@ -621,7 +635,8 @@
         }
 
         function showLoadingState() {
-            document.getElementById('question-text').textContent = "正在连接题库并加载题目...";
+            document.getElementById('question-text').textContent = "正在连接题库并随机抽题...";
+            document.getElementById('image-container').classList.add('hidden');
             document.getElementById('input-container').classList.add('hidden');
             document.getElementById('feedback-box').className = 'hidden';
             
@@ -633,6 +648,7 @@
 
         function showEmptyState(msg) {
             document.getElementById('question-text').textContent = msg;
+            document.getElementById('image-container').classList.add('hidden');
             document.getElementById('input-container').classList.add('hidden');
             document.getElementById('feedback-box').className = 'hidden';
 
@@ -650,7 +666,20 @@
             const qIndex = currentQuestionIndex % currentActiveQuestions.length;
             const currentQ = currentActiveQuestions[qIndex];
 
+            // 渲染题目文本
             document.getElementById('question-text').textContent = currentQ.q;
+
+            // 核心修改：配图判断与渲染
+            const imgContainer = document.getElementById('image-container');
+            const imgElem = document.getElementById('question-image');
+
+            if (currentQ.image_url && currentQ.image_url.trim() !== '') {
+                imgElem.src = currentQ.image_url.trim();
+                imgContainer.classList.remove('hidden');
+            } else {
+                imgContainer.classList.add('hidden');
+                imgElem.src = '';
+            }
 
             const inputElem = document.getElementById('answer-input');
             inputElem.value = '';
