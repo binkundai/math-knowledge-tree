@@ -219,7 +219,6 @@
             currentProfile = "DUDU";
             userProgress = createDefaultProgress();
             
-            // 读取本地缓存的 profile
             const savedProfiles = localStorage.getItem('math_tree_profiles');
             if (savedProfiles) profiles = JSON.parse(savedProfiles);
             
@@ -260,7 +259,6 @@
                     renderTree();
                     updateStats();
                 } else {
-                    // 云端表空时尝试插入默认 DUDU
                     try {
                         await supabaseClient.from(TABLE_PROFILES).insert([{ name: 'DUDU', progress: createDefaultProgress() }]);
                     } catch (e) {}
@@ -323,11 +321,9 @@
                 return;
             }
 
-            // 本地更新
             if (!profiles.includes(cleanName)) profiles.push(cleanName);
             localStorage.setItem('math_tree_profiles', JSON.stringify(profiles));
 
-            // 上传至 Supabase
             try {
                 const newProgress = createDefaultProgress();
                 await supabaseClient.from(TABLE_PROFILES).insert([{ name: cleanName, progress: newProgress }]);
@@ -340,16 +336,13 @@
         }
 
         async function saveProgressToSupabase() {
-            // 本地存储
             localStorage.setItem(`math_tree_progress_${currentProfile}`, JSON.stringify(userProgress));
 
-            // 内存缓存更新
             const currentRecord = allStudentProfiles.find(item => item.name === currentProfile);
             if (currentRecord) {
                 currentRecord.progress = userProgress;
             }
 
-            // 云端同步
             try {
                 await supabaseClient
                     .from(TABLE_PROFILES)
@@ -490,7 +483,7 @@
             document.getElementById('stat-red').textContent = redCount;
         }
 
-        // ==================== 5. 排行榜统计逻辑 ====================
+        // ==================== 5. 排行榜统计逻辑 (已修复 Bug) ====================
         function openLeaderboard() {
             const listContainer = document.getElementById('leaderboard-list');
             listContainer.innerHTML = '';
@@ -505,7 +498,8 @@
                     if (saved) prog = JSON.parse(saved);
                 }
 
-                let green = 0, yellow = 0, red = 15;
+                // 修复：初始化基数为 0
+                let green = 0, yellow = 0, red = 0;
                 for (let i = 1; i <= 15; i++) {
                     if (prog[i] && prog[i].status === 'green') green++;
                     else if (prog[i] && prog[i].status === 'yellow') yellow++;
@@ -747,10 +741,7 @@
         }
 
         // ==================== 7. 初始化启动 ====================
-        // 1. 先进行本地兜底渲染（确保画面立刻 100% 出现）
         initLocalFallback();
-        
-        // 2. 异步同步 Supabase 云端学员数据
         loadProfilesFromSupabase();
     </script>
 </body>
