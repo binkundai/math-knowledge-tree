@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>【蛋君小笔记】春季15讲知识树</title>
+    <title>春季15讲拔尖知识树</title>
     <!-- 引入 Tailwind CSS 构建 responsive UI -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 引入 Supabase JS SDK -->
@@ -36,10 +36,10 @@
     <!-- 响应式主容器：宽屏左右分栏，竖屏上下堆叠 -->
     <main class="w-full max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-center lg:justify-between gap-6 lg:gap-12 my-auto">
         
-        <!-- 左侧/上方区域：标题、孩子身份切换与数据统计 -->
+        <!-- 左侧/上方区域：标题、孩子身份切换、数据统计与榜单入口 -->
         <div class="w-full lg:w-2/5 flex flex-col justify-center space-y-5 text-center lg:text-left">
             <div>
-                <h1 class="text-3xl md:text-4xl font-extrabold text-amber-950 tracking-tight">【蛋君小笔记】春季拔尖树</h1>
+                <h1 class="text-3xl md:text-4xl font-extrabold text-amber-950 tracking-tight">春季拔尖知识树</h1>
                 <p class="text-sm md:text-base text-amber-800 mt-2 font-medium">点击右侧知识点开始填空刷题，连续答对 3 题即可点亮绿叶。</p>
             </div>
 
@@ -59,10 +59,13 @@
             </div>
 
             <!-- 数据统计面板 -->
-            <div class="bg-white/80 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-amber-100 max-w-md mx-auto lg:mx-0 w-full">
-                <h2 class="text-xs font-bold text-amber-900 uppercase tracking-wider mb-3 text-center lg:text-left">
-                    <span id="current-profile-label" class="text-amber-700 font-black">大宝</span> 的学习进度
-                </h2>
+            <div class="bg-white/80 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-amber-100 max-w-md mx-auto lg:mx-0 w-full space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xs font-bold text-amber-900 uppercase tracking-wider">
+                        <span id="current-profile-label" class="text-amber-700 font-black">DUDU</span> 的学习进度
+                    </h2>
+                </div>
+                
                 <div class="grid grid-cols-4 gap-2 text-center text-xs font-semibold">
                     <div class="bg-emerald-50 text-emerald-700 p-2 rounded-lg">
                         <span id="stat-green" class="block text-2xl font-black">0</span>已掌握
@@ -78,6 +81,11 @@
                         <span class="text-[10px] mt-1 font-bold">重置</span>
                     </div>
                 </div>
+
+                <!-- 排行榜入口按钮 -->
+                <button onclick="openLeaderboard()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded-xl transition text-sm flex items-center justify-center gap-2 shadow-sm">
+                    🏆 查看学员总榜单
+                </button>
             </div>
         </div>
 
@@ -94,7 +102,7 @@
 
     <!-- 页脚 -->
     <footer class="text-center text-xs text-amber-700/60 mt-4">
-        © 【蛋君小笔记】春季15讲专项树 (已连接 Supabase 云端数据库)
+        © 春季15讲专项树 (已连接云端题库)
     </footer>
 
     <!-- 刷题弹窗 (Modal) -->
@@ -140,6 +148,30 @@
         </div>
     </div>
 
+    <!-- 排行榜弹窗 (Leaderboard Modal) -->
+    <div id="leaderboard-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl relative animate-fade-in max-h-[80vh] flex flex-col">
+            <!-- 关闭按钮 -->
+            <button onclick="closeLeaderboard()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 rounded-lg transition" aria-label="关闭">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+
+            <div class="flex items-center gap-2 mb-4">
+                <span class="text-2xl">🏆</span>
+                <h3 class="text-xl font-black text-amber-950">学员学习总榜单</h3>
+            </div>
+            
+            <p class="text-xs text-gray-500 mb-4">根据已掌握（点亮绿叶）的知识点数量进行排序排名。</p>
+
+            <!-- 榜单列表区域 -->
+            <div class="overflow-y-auto flex-1 pr-1 space-y-2.5" id="leaderboard-list">
+                <!-- 动态填充 -->
+            </div>
+        </div>
+    </div>
+
     <script>
         // ==================== 1. Supabase 配置初始化 ====================
         const SUPABASE_URL = 'https://kkywoktzdhfuaqxarums.supabase.co';
@@ -172,20 +204,20 @@
         let userProgress = {};
 
         function initProfiles() {
-            const savedProfiles = localStorage.getItem('egg_notes_profiles');
+            const savedProfiles = localStorage.getItem('math_tree_profiles');
             if (savedProfiles) {
                 profiles = JSON.parse(savedProfiles);
             } else {
-                profiles = ["大宝"]; // 初始默认名字
-                localStorage.setItem('egg_notes_profiles', JSON.stringify(profiles));
+                profiles = ["DUDU"]; // 默认初始名字改为 DUDU
+                localStorage.setItem('math_tree_profiles', JSON.stringify(profiles));
             }
 
-            const savedCurrent = localStorage.getItem('egg_notes_current_profile');
+            const savedCurrent = localStorage.getItem('math_tree_current_profile');
             if (savedCurrent && profiles.includes(savedCurrent)) {
                 currentProfile = savedCurrent;
             } else {
                 currentProfile = profiles[0];
-                localStorage.setItem('egg_notes_current_profile', currentProfile);
+                localStorage.setItem('math_tree_current_profile', currentProfile);
             }
 
             renderProfileSelect();
@@ -207,7 +239,7 @@
 
         function switchProfile(name) {
             currentProfile = name;
-            localStorage.setItem('egg_notes_current_profile', currentProfile);
+            localStorage.setItem('math_tree_current_profile', currentProfile);
             document.getElementById('current-profile-label').textContent = currentProfile;
             
             loadProfileProgress(currentProfile);
@@ -215,26 +247,22 @@
             updateStats();
         }
 
-        // 新增娃（含加密密码校验）
         function addNewProfile() {
-            // 1. 验证密码 (加密比对，代码中无明文)
             const pwd = prompt("新增学员需要管理员权限，请输入密码：");
             if (!pwd) return;
 
-            // 'ZGFpYmlua3Vu' 为密码加密后的值，与输入的字符串对比
             if (btoa(pwd) !== 'ZGFpYmlua3Vu') {
                 alert("密码错误，无法新增学员！");
                 return;
             }
 
-            // 2. 密码正确后输入名字
             const name = prompt("密码验证成功！请输入孩子的名字或昵称（如：二宝、小明）：");
             if (!name || name.trim() === '') return;
             const cleanName = name.trim();
 
             if (!profiles.includes(cleanName)) {
                 profiles.push(cleanName);
-                localStorage.setItem('egg_notes_profiles', JSON.stringify(profiles));
+                localStorage.setItem('math_tree_profiles', JSON.stringify(profiles));
             }
             
             renderProfileSelect();
@@ -242,7 +270,7 @@
         }
 
         function loadProfileProgress(profileName) {
-            const key = `egg_notes_progress_${profileName}`;
+            const key = `math_tree_progress_${profileName}`;
             const saved = localStorage.getItem(key);
             if (saved) {
                 userProgress = JSON.parse(saved);
@@ -260,13 +288,13 @@
         }
 
         function saveProgress() {
-            const key = `egg_notes_progress_${currentProfile}`;
+            const key = `math_tree_progress_${currentProfile}`;
             localStorage.setItem(key, JSON.stringify(userProgress));
         }
 
         function resetProgress() {
             if (confirm(`确定要重置【${currentProfile}】的所有刷题进度吗？此操作不可逆。`)) {
-                const key = `egg_notes_progress_${currentProfile}`;
+                const key = `math_tree_progress_${currentProfile}`;
                 localStorage.removeItem(key);
                 loadProfileProgress(currentProfile);
                 renderTree();
@@ -392,7 +420,75 @@
             document.getElementById('stat-red').textContent = redCount;
         }
 
-        // ==================== 5. Supabase 异步拉取与刷题逻辑 ====================
+        // ==================== 5. 排行榜统计逻辑 ====================
+        function openLeaderboard() {
+            const listContainer = document.getElementById('leaderboard-list');
+            listContainer.innerHTML = '';
+
+            // 统计所有学员的数据
+            const leaderboardData = profiles.map(profileName => {
+                const key = `math_tree_progress_${profileName}`;
+                const saved = localStorage.getItem(key);
+                let green = 0, yellow = 0, red = 15;
+                
+                if (saved) {
+                    const prog = JSON.parse(saved);
+                    green = 0; yellow = 0; red = 0;
+                    for (let i = 1; i <= 15; i++) {
+                        if (prog[i] && prog[i].status === 'green') green++;
+                        else if (prog[i] && prog[i].status === 'yellow') yellow++;
+                        else red++;
+                    }
+                }
+                return { name: profileName, green, yellow, red };
+            });
+
+            // 按已掌握（绿）数量降序排列，相同按部分掌握降序
+            leaderboardData.sort((a, b) => {
+                if (b.green !== a.green) return b.green - a.green;
+                if (b.yellow !== a.yellow) return b.yellow - a.yellow;
+                return a.name.localeCompare(b.name);
+            });
+
+            // 渲染列表
+            leaderboardData.forEach((item, idx) => {
+                const isCurrent = item.name === currentProfile;
+                const card = document.createElement('div');
+                card.className = `p-3.5 rounded-xl border flex items-center justify-between transition ${
+                    isCurrent ? 'bg-amber-50 border-amber-400 shadow-sm' : 'bg-gray-50 border-gray-200'
+                }`;
+
+                // 奖牌图标
+                let rankBadge = `<span class="w-6 font-bold text-gray-400 text-sm text-center">${idx + 1}</span>`;
+                if (idx === 0) rankBadge = `<span class="w-6 text-xl text-center">🥇</span>`;
+                else if (idx === 1) rankBadge = `<span class="w-6 text-xl text-center">🥈</span>`;
+                else if (idx === 2) rankBadge = `<span class="w-6 text-xl text-center">🥉</span>`;
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        ${rankBadge}
+                        <span class="font-extrabold text-amber-950 text-base flex items-center gap-1.5">
+                            ${item.name}
+                            ${isCurrent ? '<span class="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded-md font-bold">当前选择</span>' : ''}
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs font-bold">
+                        <span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded-lg">已掌握 ${item.green}</span>
+                        <span class="bg-amber-100 text-amber-800 px-2 py-1 rounded-lg">部分 ${item.yellow}</span>
+                        <span class="bg-rose-100 text-rose-800 px-2 py-1 rounded-lg">未掌握 ${item.red}</span>
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+
+            document.getElementById('leaderboard-modal').classList.remove('hidden');
+        }
+
+        function closeLeaderboard() {
+            document.getElementById('leaderboard-modal').classList.add('hidden');
+        }
+
+        // ==================== 6. 云端异步拉取与刷题逻辑 ====================
         let currentActiveNodeId = null;
         let currentActiveQuestions = [];
         let currentQuestionIndex = 0;
@@ -425,11 +521,11 @@
                     document.getElementById('input-container').classList.remove('hidden');
                     loadQuestion();
                 } else {
-                    showEmptyState("暂无题目，请在 Supabase 后台导入该讲的数据。");
+                    showEmptyState("暂无题目，请联系管理员配置。");
                 }
             } catch (err) {
-                console.error("Supabase 读取失败:", err);
-                showEmptyState("网络连接失败或数据未配置，请检查网络后再试。");
+                console.error("题库读取失败:", err);
+                showEmptyState("网络连接失败，请检查网络后再试。");
             }
         }
 
@@ -463,7 +559,7 @@
         }
 
         function showLoadingState() {
-            document.getElementById('question-text').textContent = "正在从 Supabase 云端加载题目...";
+            document.getElementById('question-text').textContent = "正在连接题库并加载题目...";
             document.getElementById('input-container').classList.add('hidden');
             document.getElementById('feedback-box').className = 'hidden';
             
@@ -579,7 +675,7 @@
             }
         }
 
-        // ==================== 6. 初始化启动 ====================
+        // ==================== 7. 初始化启动 ====================
         initProfiles();
         renderTree();
         updateStats();
