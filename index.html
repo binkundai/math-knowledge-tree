@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>春季知识点树</title>
-    <!-- 引入 Tailwind CSS 用于快速构建美观的 UI -->
+    <!-- 引入 Tailwind CSS 用于构建美观的响应式 UI -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -22,57 +22,78 @@
         .node-circle:hover {
             filter: brightness(1.1);
         }
+        /* SVG 描边文字 halo 效果，确保任何背景下字体均清晰 */
+        .halo-text {
+            paint-order: stroke fill;
+            stroke: #fdfbf7;
+            stroke-width: 4px;
+            stroke-linejoin: round;
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-between p-4 pb-8">
+<body class="min-h-screen flex flex-col justify-between p-4 md:p-8">
 
-    <!-- 顶部标题 -->
-    <header class="text-center mt-4">
-        <h1 class="text-2xl font-bold text-amber-900">春季知识点拔尖树</h1>
-        <p class="text-sm text-amber-700 mt-1">点击圆形节点开始刷题，连续答对3题即可点亮绿色</p>
-    </header>
+    <!-- 响应式主容器：宽屏左右分栏，竖屏上下堆叠 -->
+    <main class="w-full max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-center lg:justify-between gap-6 lg:gap-12 my-auto">
+        
+        <!-- 左侧/上方区域：标题、说明与数据统计 -->
+        <div class="w-full lg:w-2/5 flex flex-col justify-center space-y-6 text-center lg:text-left">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-extrabold text-amber-950 tracking-tight">春季知识点拔尖树</h1>
+                <p class="text-sm md:text-base text-amber-800 mt-2 font-medium">点击右侧树上的圆形节点开始刷题，连续答对3题即可点亮绿色。</p>
+            </div>
 
-    <!-- 知识树画布区域 -->
-    <div class="w-full max-w-lg aspect-[4/5] relative flex items-center justify-center my-4">
-        <!-- SVG 动态绘制树结构 -->
-        <svg id="tree-svg" viewBox="0 0 800 900" class="w-full h-full">
-            <!-- 树干定义 -->
-            <path d="M 370 900 Q 400 650 400 550 L 400 550 Q 400 650 430 900 Z" fill="#8B5A2B" />
-            <!-- 树枝与节点将通过 JS 动态渲染到这里 -->
-            <g id="branches-group"></g>
-            <g id="nodes-group"></g>
-        </svg>
-    </div>
-
-    <!-- 底部状态统计栏 -->
-    <div class="w-full max-w-md bg-white/80 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-amber-100">
-        <div class="grid grid-cols-4 gap-2 text-center text-xs font-semibold">
-            <div class="bg-emerald-50 text-emerald-700 p-2 rounded-lg">
-                <span id="stat-green" class="block text-lg font-bold">0</span>已掌握 (绿)
-            </div>
-            <div class="bg-amber-50 text-amber-600 p-2 rounded-lg">
-                <span id="stat-yellow" class="block text-lg font-bold">0</span>部分掌握 (黄)
-            </div>
-            <div class="bg-rose-50 text-rose-600 p-2 rounded-lg">
-                <span id="stat-red" class="block text-lg font-bold">15</span>未掌握 (红)
-            </div>
-            <div class="bg-gray-50 text-gray-500 p-2 rounded-lg cursor-pointer hover:bg-gray-100 transition" onclick="resetProgress()">
-                <span class="block text-lg font-bold">🔄</span>重置进度
+            <!-- 数据统计面板 -->
+            <div class="bg-white/80 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-amber-100 max-w-md mx-auto lg:mx-0 w-full">
+                <h2 class="text-xs font-bold text-amber-900 uppercase tracking-wider mb-3 text-center lg:text-left">当前学习进度</h2>
+                <div class="grid grid-cols-4 gap-2 text-center text-xs font-semibold">
+                    <div class="bg-emerald-50 text-emerald-700 p-2 rounded-lg">
+                        <span id="stat-green" class="block text-2xl font-black">0</span>已掌握
+                    </div>
+                    <div class="bg-amber-50 text-amber-600 p-2 rounded-lg">
+                        <span id="stat-yellow" class="block text-2xl font-black">0</span>部分掌握
+                    </div>
+                    <div class="bg-rose-50 text-rose-600 p-2 rounded-lg">
+                        <span id="stat-red" class="block text-2xl font-black">15</span>未掌握
+                    </div>
+                    <div class="bg-gray-50 text-gray-500 p-2 rounded-lg cursor-pointer hover:bg-gray-100 transition flex flex-col justify-center items-center" onclick="resetProgress()">
+                        <span class="text-xl">🔄</span>
+                        <span class="text-[10px] mt-1 font-bold">重置</span>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+
+        <!-- 右侧/下方区域：知识树 SVG 画布 -->
+        <!-- 控制最大高度在 70vh，防止宽屏设备下因高度过高而产生纵向滚动条 -->
+        <div class="w-full lg:w-3/5 max-h-[70vh] aspect-[4/3] relative flex items-center justify-center">
+            <svg id="tree-svg" viewBox="0 0 900 680" class="w-full h-full drop-shadow-md">
+                <!-- 优化比例后的树干 -->
+                <path d="M 410 680 Q 450 520 450 450 L 450 450 Q 450 520 490 680 Z" fill="#8B5A2B" />
+                <!-- 动态渲染容器 -->
+                <g id="branches-group"></g>
+                <g id="nodes-group"></g>
+            </svg>
+        </div>
+
+    </main>
+
+    <!-- 页脚补充 -->
+    <footer class="text-center text-xs text-amber-700/60 mt-4">
+        © 春季课程专版 知识图谱在线系统
+    </footer>
 
     <!-- 刷题弹窗 (Modal) -->
     <div id="quiz-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative animate-fade-in">
-            <!-- 改进的关闭按钮：使用优雅的 SVG X 图标 -->
+            <!-- 优雅的 SVG 叉号关闭按钮 -->
             <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 rounded-lg transition" aria-label="关闭">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
             
-            <!-- 知识点名称 -->
+            <!-- 知识点标签 -->
             <div class="mb-2">
                 <span class="text-xs font-bold px-2 py-1 bg-amber-100 text-amber-800 rounded-full" id="modal-tag">知识点</span>
             </div>
@@ -88,15 +109,13 @@
             <div id="question-box" class="mb-6">
                 <p class="text-gray-700 font-medium mb-4" id="question-text">加载中...</p>
                 <!-- 选项列表 -->
-                <div class="space-y-2" id="options-box">
-                    <!-- 动态插入选项 -->
-                </div>
+                <div class="space-y-2" id="options-box"></div>
             </div>
 
             <!-- 反馈提示 -->
             <div id="feedback-box" class="hidden mb-4 p-3 rounded-lg text-sm text-center font-semibold"></div>
 
-            <!-- 改进的多功能操作按钮（确认/下一题） -->
+            <!-- 确认/下一题 按钮 -->
             <button id="action-btn" class="w-full py-3 rounded-xl font-semibold transition" onclick="handleActionClick()">
                 请先选择一个答案
             </button>
@@ -106,22 +125,8 @@
     <script>
         // ==================== 1. 题库数据配置 ====================
         const questionsData = {
-            1: {
-                name: "1. 两位数乘法",
-                questions: [
-                    { q: "12 × 11 等于多少？", options: ["121", "132", "142", "152"], correct: 1 },
-                    { q: "15 × 15 等于多少？", options: ["225", "235", "245", "255"], correct: 0 },
-                    { q: "20 × 14 等于多少？", options: ["260", "270", "280", "290"], correct: 2 }
-                ]
-            },
-            2: {
-                name: "2. 除法与余数",
-                questions: [
-                    { q: "25 ÷ 4 的余数是多少？", options: ["1", "2", "3", "0"], correct: 0 },
-                    { q: "47 ÷ 6 的商和余数是多少？", options: ["商7余5", "商8余1", "商7余2", "商8余5"], correct: 0 },
-                    { q: "100 ÷ 9 的余数是多少？", options: ["1", "2", "3", "4"], correct: 0 }
-                ]
-            },
+            1: { name: "1. 两位数乘法", questions: [{ q: "12 × 11 等于多少？", options: ["121", "132", "142", "152"], correct: 1 }, { q: "15 × 15 等于多少？", options: ["225", "235", "245", "255"], correct: 0 }, { q: "20 × 14 等于多少？", options: ["260", "270", "280", "290"], correct: 2 }] },
+            2: { name: "2. 除法与余数", questions: [{ q: "25 ÷ 4 的余数是多少？", options: ["1", "2", "3", "0"], correct: 0 }, { q: "47 ÷ 6 的商和余数是多少？", options: ["商7余5", "商8余1", "商7余2", "商8余5"], correct: 0 }, { q: "100 ÷ 9 的余数是多少？", options: ["1", "2", "3", "4"], correct: 0 }] },
             3: { name: "3. 分数初步认识", questions: [{ q: "1/4 + 2/4 等于多少？", options: ["3/4", "3/8", "1/2", "1"], correct: 0 }, { q: "2/3 里面有几个 1/3？", options: ["1", "2", "3", "4"], correct: 1 }, { q: "1 减去 3/5 等于多少？", options: ["1/5", "2/5", "3/5", "4/5"], correct: 1 }] },
             4: { name: "4. 小数的加减法", questions: [{ q: "0.3 + 0.5 等于多少？", options: ["0.8", "0.08", "8", "0.15"], correct: 0 }, { q: "1.2 - 0.4 等于多少？", options: ["0.8", "1.8", "0.6", "1.6"], correct: 0 }, { q: "5 - 1.5 等于多少？", options: ["3.5", "4.5", "2.5", "3"], correct: 0 }] },
             5: { name: "5. 长度单位换算", questions: [{ q: "3米 等于多少 分米？", options: ["30", "300", "3", "0.3"], correct: 0 }, { q: "50毫米 等于多少 厘米？", options: ["500", "5", "50", "0.5"], correct: 1 }, { q: "2千米 等于多少 米？", options: ["20", "200", "2000", "20000"], correct: 2 }] },
@@ -132,7 +137,7 @@
             10: { name: "10. 认读钟表", questions: [{ q: "分针走一大格是几分钟？", options: ["1分钟", "5分钟", "10分钟", "12分钟"], correct: 1 }, { q: "时针从3走到6，经过了多久？", options: ["3分钟", "15分钟", "3小时", "6小时"], correct: 2 }, { q: "秒针走一圈，分针走几小格？", options: ["1小格", "5小格", "12小格", "60小格"], correct: 0 }] },
             11: { name: "11. 轴对称图形", questions: [{ q: "下列哪个汉字是轴对称图形？", options: ["中", "国", "吉", "A和C都是"], correct: 3 }, { q: "正方形有几条对称轴？", options: ["2条", "4条", "8条", "无数条"], correct: 1 }, { q: "等边三角形有几条对称轴？", options: ["1条", "2条", "3条", "0条"], correct: 2 }] },
             12: { name: "12. 数据的整理", questions: [{ q: "统计图里最常用来表示数量多少的是？", options: ["条形统计图", "折线统计图", "扇形统计图", "表格"], correct: 0 }, { q: "平均数能代表什么？", options: ["最大值", "最小值", "整体平均水平", "最中间的数"], correct: 2 }, { q: "有3个班，平均每班40人，总人数是？", options: ["40人", "120人", "80人", "160人"], correct: 1 }] },
-            13: { name: "13. 搭配问题", questions: [{ q: "2件上衣 and 3条裤子，一共有几种穿法？", options: ["5种", "6种", "8种", "9种"], correct: 1 }, { q: "有3个小朋友，每两人握一次手，共握几次？", options: ["3次", "6次", "9次", "4次"], correct: 0 }, { q: "1、2、3三个数字能组成几个不同的两位数？", options: ["3个", "6个", "9个", "4个"], correct: 1 }] },
+            13: { name: "13. 搭配问题", questions: [{ q: "2件上衣和3条裤子，一共有几种穿法？", options: ["5种", "6种", "8种", "9种"], correct: 1 }, { q: "有3个小朋友，每两人握一次手，共握几次？", options: ["3次", "6次", "9次", "4次"], correct: 0 }, { q: "1、2、3三个数字能组成几个不同的两位数？", options: ["3个", "6个", "9个", "4个"], correct: 1 }] },
             14: { name: "14. 周期规律", questions: [{ q: "按“红黄蓝红黄蓝...”排列，第10个是什么颜色？", options: ["红", "黄", "蓝", "无法确定"], correct: 0 }, { q: "按“AABBAABB...”排列，第15个字母是？", options: ["A", "B", "C", "D"], correct: 1 }, { q: "今天是星期一，再过8天是星期几？", options: ["星期一", "星期二", "星期三", "星期日"], correct: 1 }] },
             15: { name: "15. 简单重叠问题", questions: [{ q: "排队时，小明从前数第5，从后数第4，这队共几人？", options: ["9人", "8人", "7人", "10人"], correct: 1 }, { q: "两张10厘米的纸条重叠2厘米粘在一起，总长？", options: ["20厘米", "18厘米", "16厘米", "19厘米"], correct: 1 }, { q: "班里有8人喜欢画画，7人喜欢唱歌，其中3人两样都喜欢，班里共有多少人？", options: ["15人", "12人", "11人", "18人"], correct: 1 }] }
         };
@@ -141,13 +146,13 @@
         let userProgress = {};
 
         function initProgress() {
-            const saved = localStorage.getItem('spring_tree_progress_v1');
+            const saved = localStorage.getItem('spring_tree_progress_v2');
             if (saved) {
                 userProgress = JSON.parse(saved);
             } else {
                 for (let i = 1; i <= 15; i++) {
                     userProgress[i] = {
-                        status: 'red', // 'red' | 'yellow' | 'green'
+                        status: 'red',
                         consecutiveCorrect: 0,
                         attempted: false
                     };
@@ -157,12 +162,12 @@
         }
 
         function saveProgress() {
-            localStorage.setItem('spring_tree_progress_v1', JSON.stringify(userProgress));
+            localStorage.setItem('spring_tree_progress_v2', JSON.stringify(userProgress));
         }
 
         function resetProgress() {
             if (confirm("确定要重置所有刷题进度吗？此操作不可逆。")) {
-                localStorage.removeItem('spring_tree_progress_v1');
+                localStorage.removeItem('spring_tree_progress_v2');
                 initProgress();
                 renderTree();
                 updateStats();
@@ -171,9 +176,9 @@
 
         // ==================== 3. 动态绘制知识树 ====================
         const colors = {
-            red: { node: '#FF4D4F', branch: '#FFA39E', glow: 'rgba(255, 77, 79, 0.4)' },
-            yellow: { node: '#FFC53D', branch: '#FFE58F', glow: 'rgba(255, 197, 61, 0.4)' },
-            green: { node: '#52C41A', branch: '#B7EB8F', glow: 'rgba(82, 196, 26, 0.4)' }
+            red: { node: '#FF4D4F', branch: '#FFA39E' },
+            yellow: { node: '#FFC53D', branch: '#FFE58F' },
+            green: { node: '#52C41A', branch: '#B7EB8F' }
         };
 
         function renderTree() {
@@ -182,10 +187,11 @@
             branchesGroup.innerHTML = '';
             nodesGroup.innerHTML = '';
 
-            const trunkX = 400;
-            const trunkY = 550;
+            const trunkX = 450; // 中心X坐标
+            const trunkY = 460; // 分叉起始高度
             const totalNodes = 15;
 
+            // 扇形分布角度调整：更舒展
             const startAngle = 195;
             const endAngle = 345;
             const angleStep = (endAngle - startAngle) / (totalNodes - 1);
@@ -197,16 +203,20 @@
 
                 const angleDeg = startAngle + i * angleStep;
                 const angleRad = (angleDeg * Math.PI) / 180;
-                const radius = i % 2 === 0 ? 330 : 250;
+                
+                // 轮换长度 (外圈320像素，内圈250像素)
+                const isOuter = (i % 2 === 0);
+                const radius = isOuter ? 320 : 250;
 
                 const targetX = trunkX + radius * Math.cos(angleRad);
                 const targetY = trunkY + radius * Math.sin(angleRad);
 
+                // 绘制柔和弯曲的树枝
                 const ctrlX = trunkX + (targetX - trunkX) * 0.25;
-                const ctrlY = trunkY + (targetY - trunkY) * 0.55;
+                const ctrlY = trunkY + (targetY - trunkY) * 0.4;
 
                 const branchPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                branchPath.setAttribute('d', `M ${trunkX} ${trunkY} Q ${ctrlX} ${ctrlY} ${targetX} ${targetY}`);
+                branchPath.setAttribute('d', `M 450 490 Q ${ctrlX} ${ctrlY} ${targetX} ${targetY}`);
                 branchPath.setAttribute('stroke', colorConfig.branch);
                 branchPath.setAttribute('stroke-width', '4');
                 branchPath.setAttribute('fill', 'none');
@@ -221,7 +231,7 @@
                 group.innerHTML = `
                     <defs>
                         <filter id="${filterId}" x="-50%" y="-50%" width="200%" height="200%">
-                            <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+                            <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
                             <feMerge>
                                 <feMergeNode in="coloredBlur"/>
                                 <feMergeNode in="SourceGraphic"/>
@@ -230,32 +240,40 @@
                     </defs>
                 `;
 
+                // 增大圆形节点 (半径从 20 提升到 25)
                 const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 circle.setAttribute('cx', targetX);
                 circle.setAttribute('cy', targetY);
-                circle.setAttribute('r', '20');
+                circle.setAttribute('r', '25');
                 circle.setAttribute('fill', colorConfig.node);
                 circle.setAttribute('class', 'node-circle');
                 circle.setAttribute('filter', `url(#${filterId})`);
                 group.appendChild(circle);
 
+                // 增大数字
                 const textNum = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 textNum.setAttribute('x', targetX);
-                textNum.setAttribute('y', targetY + 5);
+                textNum.setAttribute('y', targetY + 6);
                 textNum.setAttribute('fill', '#ffffff');
-                textNum.setAttribute('font-size', '13');
-                textNum.setAttribute('font-weight', 'bold');
+                textNum.setAttribute('font-size', '16');
+                textNum.setAttribute('font-weight', '900');
                 textNum.setAttribute('text-anchor', 'middle');
                 textNum.textContent = id;
                 group.appendChild(textNum);
 
+                // 知识点文字展示（避让排版 + Halo 描边确保极其清晰）
                 const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 labelText.setAttribute('x', targetX);
-                labelText.setAttribute('y', targetY + (targetY > trunkY ? 40 : -32));
-                labelText.setAttribute('fill', '#5c3f15');
-                labelText.setAttribute('font-size', '12');
-                labelText.setAttribute('font-weight', '500');
+                
+                // 内圈文字放下，外圈文字放上，完全避免排版碰撞
+                const labelYOffset = isOuter ? -36 : 45;
+                labelText.setAttribute('y', targetY + labelYOffset);
+                labelText.setAttribute('fill', '#451a03'); // 极高对比度的深棕色
+                labelText.setAttribute('font-size', '15');  // 增大字号
+                labelText.setAttribute('font-weight', 'bold');
                 labelText.setAttribute('text-anchor', 'middle');
+                labelText.setAttribute('class', 'halo-text');
+
                 const shortName = questionsData[id].name.split('.')[1].trim();
                 labelText.textContent = shortName;
                 group.appendChild(labelText);
@@ -281,11 +299,11 @@
             document.getElementById('stat-red').textContent = redCount;
         }
 
-        // ==================== 5. 弹窗和答题逻辑 ====================
+        // ==================== 5. 弹窗与答题逻辑 ====================
         let currentActiveNodeId = null;
         let currentQuestionIndex = 0;
-        let selectedOptionIdx = null;  // 记录当前点击选择但尚未确认的选项
-        let isAnswered = false;        // 是否已经点击了确认
+        let selectedOptionIdx = null;
+        let isAnswered = false;
 
         function openQuiz(nodeId) {
             currentActiveNodeId = nodeId;
@@ -340,7 +358,6 @@
             const optionsBox = document.getElementById('options-box');
             optionsBox.innerHTML = '';
 
-            // 绘制初始选项
             currentQ.options.forEach((opt, idx) => {
                 const btn = document.createElement('button');
                 btn.id = `opt-btn-${idx}`;
@@ -350,19 +367,16 @@
                 optionsBox.appendChild(btn);
             });
 
-            // 隐藏反馈区
             document.getElementById('feedback-box').className = 'hidden mb-4 p-3 rounded-lg text-sm text-center font-semibold';
             
-            // 初始化底部操作按钮为禁用状态（不做选择无法进行下一步）
             const actionBtn = document.getElementById('action-btn');
             actionBtn.disabled = true;
             actionBtn.textContent = "请先选择一个答案";
             actionBtn.className = "w-full py-3 rounded-xl font-semibold transition bg-gray-200 text-gray-400 cursor-not-allowed";
         }
 
-        // 第一步：点击选项（未确认前，允许用户随意更换调整选择）
         function selectOption(idx) {
-            if (isAnswered) return; // 已确认提交，则不能再更换选项
+            if (isAnswered) return;
 
             selectedOptionIdx = idx;
 
@@ -370,26 +384,21 @@
             const qIndex = currentQuestionIndex % data.questions.length;
             const currentQ = data.questions[qIndex];
 
-            // 重新刷新选项高亮状态
             for (let i = 0; i < currentQ.options.length; i++) {
                 const btn = document.getElementById(`opt-btn-${i}`);
                 if (i === idx) {
-                    // 高亮选中项为金黄色边框
                     btn.className = "w-full text-left p-3 border-2 border-amber-500 bg-amber-50/70 rounded-xl transition text-sm text-amber-900 font-semibold flex items-center justify-between";
                 } else {
-                    // 其他选项恢复默认
                     btn.className = "w-full text-left p-3 border border-gray-200 rounded-xl hover:bg-amber-50/50 hover:border-amber-300 transition text-sm text-gray-700 font-medium flex items-center justify-between";
                 }
             }
 
-            // 开启下方“确认选择”按钮
             const actionBtn = document.getElementById('action-btn');
             actionBtn.disabled = false;
             actionBtn.textContent = "确认选择";
             actionBtn.className = "w-full py-3 rounded-xl font-semibold transition bg-amber-600 text-white hover:bg-amber-700 cursor-pointer";
         }
 
-        // 第二步：处理底部按钮的点击事件（作为“确认选择”和“下一题”的多功能切换点）
         function handleActionClick() {
             const data = questionsData[currentActiveNodeId];
             const qIndex = currentQuestionIndex % data.questions.length;
@@ -400,21 +409,16 @@
             const actionBtn = document.getElementById('action-btn');
 
             if (!isAnswered) {
-                // 情况一：用户点击“确认选择” —— 进行结果核算并展示正误
                 isAnswered = true;
 
-                // 禁用选项点击
                 for (let i = 0; i < currentQ.options.length; i++) {
                     const btn = document.getElementById(`opt-btn-${i}`);
-                    btn.onclick = null; // 移除事件
+                    btn.onclick = null;
                     btn.style.cursor = 'default';
                     
-                    // 显示正确与错误视觉反馈
                     if (i === correctIdx) {
-                        // 正确项高亮为绿色
                         btn.className = "w-full text-left p-3 border-2 border-emerald-500 bg-emerald-50 rounded-xl transition text-sm text-emerald-800 font-semibold flex items-center justify-between";
                     } else if (i === selectedOptionIdx) {
-                        // 用户选错的项标红
                         btn.className = "w-full text-left p-3 border-2 border-rose-500 bg-rose-50 rounded-xl transition text-sm text-rose-800 font-semibold flex items-center justify-between";
                     } else {
                         btn.className = "w-full text-left p-3 border border-gray-100 rounded-xl transition text-sm text-gray-400 flex items-center justify-between";
@@ -425,18 +429,15 @@
                 progress.attempted = true;
 
                 if (selectedOptionIdx === correctIdx) {
-                    // 正确
                     progress.consecutiveCorrect += 1;
                     feedbackBox.textContent = "回答正确！🎉 连续答对次数 +1";
                     feedbackBox.className = "mb-4 p-3 rounded-lg text-sm text-center font-semibold bg-emerald-100 text-emerald-800 block";
                 } else {
-                    // 错误，连对清零
                     progress.consecutiveCorrect = 0;
                     feedbackBox.textContent = "回答错误。😢 连续答对清零，再接再厉！";
                     feedbackBox.className = "mb-4 p-3 rounded-lg text-sm text-center font-semibold bg-rose-100 text-rose-800 block";
                 }
 
-                // 进度更新判定
                 if (progress.consecutiveCorrect >= 3) {
                     progress.status = 'green';
                 } else {
@@ -448,11 +449,9 @@
                 updateStats();
                 updateModalUI();
 
-                // 锁定答案后，按钮功能立即变更为“下一题”
                 actionBtn.textContent = "下一题";
 
             } else {
-                // 情况二：用户点击“下一题” —— 加载新题目并恢复选择状态
                 currentQuestionIndex++;
                 loadQuestion();
             }
