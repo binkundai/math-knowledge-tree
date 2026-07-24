@@ -23,7 +23,6 @@
         .node-circle:hover {
             filter: brightness(1.1);
         }
-        /* SVG 描边文字 halo 效果，确保文字清晰 */
         .halo-text {
             paint-order: stroke fill;
             stroke: #fdfbf7;
@@ -37,16 +36,33 @@
     <!-- 响应式主容器：宽屏左右分栏，竖屏上下堆叠 -->
     <main class="w-full max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-center lg:justify-between gap-6 lg:gap-12 my-auto">
         
-        <!-- 左侧/上方区域：标题与数据统计 -->
-        <div class="w-full lg:w-2/5 flex flex-col justify-center space-y-6 text-center lg:text-left">
+        <!-- 左侧/上方区域：标题、孩子身份切换与数据统计 -->
+        <div class="w-full lg:w-2/5 flex flex-col justify-center space-y-5 text-center lg:text-left">
             <div>
                 <h1 class="text-3xl md:text-4xl font-extrabold text-amber-950 tracking-tight">【蛋君小笔记】春季拔尖树</h1>
                 <p class="text-sm md:text-base text-amber-800 mt-2 font-medium">点击右侧知识点开始填空刷题，连续答对 3 题即可点亮绿叶。</p>
             </div>
 
+            <!-- 多孩子/学员身份切换栏 -->
+            <div class="bg-amber-100/80 rounded-2xl p-3.5 flex items-center justify-between gap-3 border border-amber-200/80 shadow-sm max-w-md mx-auto lg:mx-0 w-full">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-bold text-amber-950 flex items-center gap-1">
+                        👤 当前刷题娃：
+                    </span>
+                    <select id="profile-select" onchange="switchProfile(this.value)" class="bg-white border-2 border-amber-300 font-bold text-amber-900 text-sm rounded-xl px-3 py-1.5 focus:outline-none focus:border-amber-500 shadow-sm cursor-pointer">
+                        <!-- 动态插入学员列表 -->
+                    </select>
+                </div>
+                <button onclick="addNewProfile()" class="text-xs bg-amber-700 hover:bg-amber-800 text-white font-bold px-3 py-2 rounded-xl transition shadow-sm flex items-center gap-1">
+                    <span>+ 新增娃</span>
+                </button>
+            </div>
+
             <!-- 数据统计面板 -->
             <div class="bg-white/80 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-amber-100 max-w-md mx-auto lg:mx-0 w-full">
-                <h2 class="text-xs font-bold text-amber-900 uppercase tracking-wider mb-3 text-center lg:text-left">当前学习进度</h2>
+                <h2 class="text-xs font-bold text-amber-900 uppercase tracking-wider mb-3 text-center lg:text-left">
+                    <span id="current-profile-label" class="text-amber-700 font-black">大宝</span> 的学习进度
+                </h2>
                 <div class="grid grid-cols-4 gap-2 text-center text-xs font-semibold">
                     <div class="bg-emerald-50 text-emerald-700 p-2 rounded-lg">
                         <span id="stat-green" class="block text-2xl font-black">0</span>已掌握
@@ -103,7 +119,6 @@
 
             <!-- 问题与填空输入区域 -->
             <div id="question-box" class="mb-6">
-                <!-- 动态填充加载/题目内容 -->
                 <p class="text-gray-800 font-semibold mb-4 leading-relaxed" id="question-text">加载中...</p>
                 <div id="input-container" class="space-y-2">
                     <label class="block text-xs text-gray-500 font-medium">请在下方填入最终答案：</label>
@@ -131,10 +146,8 @@
         const SUPABASE_KEY = 'sb_publishable_idTxvuv2vTidJEovF7N1xA_iIeudc4F';
         const TABLE_NAME = 'math-knowledge-tree';
 
-        // 初始化 Supabase 客户端
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 15 讲基础目录定义（用于渲染树和标题）
         const knowledgePointNames = {
             1: "第1讲 整数巧算",
             2: "第2讲 年龄问题",
@@ -153,14 +166,76 @@
             15: "第15讲 行程问题"
         };
 
-        // ==================== 2. 用户本地进度管理器 ====================
+        // ==================== 2. 多孩子/学员身份进度管理器 ====================
+        let profiles = [];
+        let currentProfile = "";
         let userProgress = {};
 
-        function initProgress() {
-            const saved = localStorage.getItem('egg_notes_progress_v3');
+        function initProfiles() {
+            const savedProfiles = localStorage.getItem('egg_notes_profiles');
+            if (savedProfiles) {
+                profiles = JSON.parse(savedProfiles);
+            } else {
+                profiles = ["大宝"]; // 初始默认名字
+                localStorage.setItem('egg_notes_profiles', JSON.stringify(profiles));
+            }
+
+            const savedCurrent = localStorage.getItem('egg_notes_current_profile');
+            if (savedCurrent && profiles.includes(savedCurrent)) {
+                currentProfile = savedCurrent;
+            } else {
+                currentProfile = profiles[0];
+                localStorage.setItem('egg_notes_current_profile', currentProfile);
+            }
+
+            renderProfileSelect();
+            loadProfileProgress(currentProfile);
+        }
+
+        function renderProfileSelect() {
+            const select = document.getElementById('profile-select');
+            select.innerHTML = '';
+            profiles.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                if (name === currentProfile) opt.selected = true;
+                select.appendChild(opt);
+            });
+            document.getElementById('current-profile-label').textContent = currentProfile;
+        }
+
+        function switchProfile(name) {
+            currentProfile = name;
+            localStorage.setItem('egg_notes_current_profile', currentProfile);
+            document.getElementById('current-profile-label').textContent = currentProfile;
+            
+            loadProfileProgress(currentProfile);
+            renderTree();
+            updateStats();
+        }
+
+        function addNewProfile() {
+            const name = prompt("请输入孩子的名字或昵称（如：二宝、小明）：");
+            if (!name || name.trim() === '') return;
+            const cleanName = name.trim();
+
+            if (!profiles.includes(cleanName)) {
+                profiles.push(cleanName);
+                localStorage.setItem('egg_notes_profiles', JSON.stringify(profiles));
+            }
+            
+            renderProfileSelect();
+            switchProfile(cleanName);
+        }
+
+        function loadProfileProgress(profileName) {
+            const key = `egg_notes_progress_${profileName}`;
+            const saved = localStorage.getItem(key);
             if (saved) {
                 userProgress = JSON.parse(saved);
             } else {
+                userProgress = {};
                 for (let i = 1; i <= 15; i++) {
                     userProgress[i] = {
                         status: 'red',
@@ -173,13 +248,15 @@
         }
 
         function saveProgress() {
-            localStorage.setItem('egg_notes_progress_v3', JSON.stringify(userProgress));
+            const key = `egg_notes_progress_${currentProfile}`;
+            localStorage.setItem(key, JSON.stringify(userProgress));
         }
 
         function resetProgress() {
-            if (confirm("确定要重置所有刷题进度吗？此操作不可逆。")) {
-                localStorage.removeItem('egg_notes_progress_v3');
-                initProgress();
+            if (confirm(`确定要重置【${currentProfile}】的所有刷题进度吗？此操作不可逆。`)) {
+                const key = `egg_notes_progress_${currentProfile}`;
+                localStorage.removeItem(key);
+                loadProfileProgress(currentProfile);
                 renderTree();
                 updateStats();
             }
@@ -305,7 +382,7 @@
 
         // ==================== 5. Supabase 异步拉取与刷题逻辑 ====================
         let currentActiveNodeId = null;
-        let currentActiveQuestions = []; // 当前从云端拉取到的题目列表
+        let currentActiveQuestions = [];
         let currentQuestionIndex = 0;
         let isAnswered = false;
 
@@ -320,7 +397,6 @@
             updateModalUI();
             showLoadingState();
 
-            // 向 Supabase 发起数据请求
             try {
                 const { data, error } = await supabaseClient
                     .from(TABLE_NAME)
@@ -337,7 +413,7 @@
                     document.getElementById('input-container').classList.remove('hidden');
                     loadQuestion();
                 } else {
-                    showEmptyState("暂无题目，请在 Supabase 后台导入该讲的 CSV 数据。");
+                    showEmptyState("暂无题目，请在 Supabase 后台导入该讲的数据。");
                 }
             } catch (err) {
                 console.error("Supabase 读取失败:", err);
@@ -455,7 +531,6 @@
                 isAnswered = true;
                 inputElem.disabled = true;
 
-                // 判断逻辑：不区分大小写，自动消除前后空格
                 const isCorrect = (userVal.toLowerCase() === String(currentQ.answer).trim().toLowerCase());
 
                 const progress = userProgress[currentActiveNodeId];
@@ -493,7 +568,7 @@
         }
 
         // ==================== 6. 初始化启动 ====================
-        initProgress();
+        initProfiles();
         renderTree();
         updateStats();
     </script>
