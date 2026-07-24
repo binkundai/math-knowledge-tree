@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2MC春季15讲知识树</title>
-    <!-- 引入 Tailwind CSS 构建响应式 UI -->
+    <title>【蛋君小笔记】春季15讲知识树</title>
+    <!-- 引入 Tailwind CSS 构建 responsive UI -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             background: linear-gradient(to bottom, #fdfbf7, #f5f0e6);
@@ -76,13 +78,13 @@
 
     <!-- 页脚 -->
     <footer class="text-center text-xs text-amber-700/60 mt-4">
-        © 【蛋君小笔记】春季15讲专项树
+        © 【蛋君小笔记】春季15讲专项树 (已连接 Supabase 云端数据库)
     </footer>
 
     <!-- 刷题弹窗 (Modal) -->
     <div id="quiz-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative animate-fade-in">
-            <!-- X 关闭按钮 -->
+            <!-- 关闭按钮 -->
             <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 rounded-lg transition" aria-label="关闭">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -99,10 +101,11 @@
                 <span>当前连续答对：<strong id="modal-streak" class="text-emerald-600">0/3</strong></span>
             </div>
 
-            <!-- 问题与填空输入框 -->
+            <!-- 问题与填空输入区域 -->
             <div id="question-box" class="mb-6">
+                <!-- 动态填充加载/题目内容 -->
                 <p class="text-gray-800 font-semibold mb-4 leading-relaxed" id="question-text">加载中...</p>
-                <div class="space-y-2">
+                <div id="input-container" class="space-y-2">
                     <label class="block text-xs text-gray-500 font-medium">请在下方填入最终答案：</label>
                     <input type="text" id="answer-input" 
                            placeholder="请输入您的答案" 
@@ -123,136 +126,37 @@
     </div>
 
     <script>
-        // ==================== 1. 15讲题库数据配置 (填空题模式) ====================
-        // 您可以根据需要修改每个题目里的 q (问题) 和 answer (预设答案)
-        const questionsData = {
-            1: {
-                name: "第1讲 整数巧算",
-                questions: [
-                    { q: "计算：99 + 999 + 9999 =", answer: "11097" },
-                    { q: "计算：25 × 32 × 125 =", answer: "100000" },
-                    { q: "计算：1234 + 2341 + 3412 + 4123 =", answer: "11110" }
-                ]
-            },
-            2: {
-                name: "第2讲 年龄问题",
-                questions: [
-                    { q: "今年妈妈36岁，小明10岁，几年前妈妈年龄是小明的3倍？", answer: "3" },
-                    { q: "爸爸今年40岁，儿子12岁，几年后爸爸年龄是儿子的3倍？", answer: "2" },
-                    { q: "哥哥今年15岁，弟弟9岁，当两人年龄和为50岁时，哥哥多少岁？", answer: "28" }
-                ]
-            },
-            3: {
-                name: "第3讲 页码问题",
-                questions: [
-                    { q: "一本书共100页，编页码共需要多少个数字？", answer: "192" },
-                    { q: "编一本书的页码共用了201个数字，这本书有多少页？", answer: "103" },
-                    { q: "一本书编页码共用了9个数字“7”，这本书最多有多少页？", answer: "78" }
-                ]
-            },
-            4: {
-                name: "第4讲 加乘原理 II",
-                questions: [
-                    { q: "从A地到B地有3条路，从B地到C地有4条路，从A地经B地到C地共有多少种走法？", answer: "12" },
-                    { q: "用1、2、3三个数字，可以组成多少个没有重复数字的三位数？", answer: "6" },
-                    { q: "书架上有5本不同的数学书和4本不同的语文书，从中任取语文和数学书各1本，有多少种取法？", answer: "20" }
-                ]
-            },
-            5: {
-                name: "第5讲 整数分拆",
-                questions: [
-                    { q: "把自然数 10 分拆成三个不同的自然数相加，有多少种分拆方法？", answer: "4" },
-                    { q: "将 8 分拆成若干个正整数相加，乘积最大是多少？", answer: "18" },
-                    { q: "把 12 分拆成两个质数相加，有几组不同的组合？", answer: "1" }
-                ]
-            },
-            6: {
-                name: "第6讲 平行四边形与梯形",
-                questions: [
-                    { q: "一个梯形上底是4cm，下底是8cm，高是5cm，面积是多少平方厘米？", answer: "30" },
-                    { q: "平行四边形底是10cm，高是6cm，与它等底等高的三角形面积是多少平方厘米？", answer: "30" },
-                    { q: "一个梯形面积是40平方厘米，上下底之和是16cm，高是多少厘米？", answer: "5" }
-                ]
-            },
-            7: {
-                name: "第7讲 标数法",
-                questions: [
-                    { q: "在一个 3×3 的正方形网格中，从左下角到右上角最短路线共有多少种？", answer: "20" },
-                    { q: "在一个 2×4 的网格中，只能向右或向上走，从左下角到右上角共有多少种走法？", answer: "15" },
-                    { q: "在一个 3×4 的网格中，从左下角到右上角的最短走法共有多少种？", answer: "35" }
-                ]
-            },
-            8: {
-                name: "第8讲 简易方程 I",
-                questions: [
-                    { q: "解方程：3x + 5 = 20，x =", answer: "5" },
-                    { q: "解方程：4x - 8 = 24，x =", answer: "8" },
-                    { q: "解方程：2(x + 3) = 16，x =", answer: "5" }
-                ]
-            },
-            9: {
-                name: "第9讲 带余除法 II",
-                questions: [
-                    { q: "一个数除以7余3，除以5余2，这个数最小是多少？", answer: "17" },
-                    { q: "100以内除以6余4且除以8余6的数是多少？", answer: "22" },
-                    { q: "一个数除以9余5，这个数的3倍除以9余多少？", answer: "6" }
-                ]
-            },
-            10: {
-                name: "第10讲 点线排布",
-                questions: [
-                    { q: "在一条长20米的路上，每隔4米种一棵树（两端都种），共种多少棵树？", answer: "6" },
-                    { q: "在一个周长为40米的圆形花坛周围每隔5米摆一盆花，共摆多少盆？", answer: "8" },
-                    { q: "在一条长50米的路一侧种树，两端不种，每隔10米种一棵，共种多少棵？", answer: "4" }
-                ]
-            },
-            11: {
-                name: "第11讲 统筹与最优化",
-                questions: [
-                    { q: "烙一张饼要4分钟（正反面各2分钟），一个锅一次最多烙2张，烙3张饼最少需要多少分钟？", answer: "6" },
-                    { q: "小明烧水洗茶杯：烧水10分钟，洗茶杯3分钟，接水1分钟，拿茶叶1分钟，最少需要多少分钟喝上茶？", answer: "12" },
-                    { q: "有3个病人同时找医生看病，分别需要5分钟、3分钟、8分钟，如何安排使3人等待的总时间最短（单位：分）？", answer: "27" }
-                ]
-            },
-            12: {
-                name: "第12讲 列方程解应用题",
-                questions: [
-                    { q: "某数加上8，乘8，减去8，除以8，结果还是8，这个数是多少？", answer: "1" },
-                    { q: "鸡兔同笼，共有头10个，脚28只，鸡有多少只？", answer: "6" },
-                    { q: "小明买3支铅笔和2本练习本花了10元，练习本比铅笔贵2元，铅笔单价是多少元？", answer: "1.2" }
-                ]
-            },
-            13: {
-                name: "第13讲 大数巧算",
-                questions: [
-                    { q: "计算：123456 × 999999 =", answer: "123455876544" },
-                    { q: "计算：999 × 999 + 1999 =", answer: "1000000" },
-                    { q: "计算：111111111 × 111111111 =", answer: "12345678987654321" }
-                ]
-            },
-            14: {
-                name: "第14讲 容斥原理 II",
-                questions: [
-                    { q: "班里有30人，喜欢数学的有20人，喜欢语文的有15人，两样都喜欢的有8人，两样都不喜欢的有多少人？", answer: "3" },
-                    { q: "50名学生参加测试，语文及格40人，数学及格35人，两门都不及格5人，两门都及格的有多少人？", answer: "30" },
-                    { q: "全班40人，做对第一题的有28人，做对第二题的有22人，两题都做错的有6人，两题都做对的有多少人？", answer: "16" }
-                ]
-            },
-            15: {
-                name: "第15讲 行程问题",
-                questions: [
-                    { q: "甲乙两人相距100米，相向而行，甲速度6m/s，乙速度4m/s，几秒后相遇？", answer: "10" },
-                    { q: "小明去学校速度为60米/分，返回时速度为40米/分，往返平均速度是多少米/分？", answer: "48" },
-                    { q: "一列火车的车身长200米，速度为20米/秒，穿过一条长600米的隧道需要多少秒？", answer: "40" }
-                ]
-            }
+        // ==================== 1. Supabase 配置初始化 ====================
+        const SUPABASE_URL = 'https://kkywoktzdhfuaqxarums.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_idTxvuv2vTidJEovF7N1xA_iIeudc4F';
+        const TABLE_NAME = 'math-knowledge-tree';
+
+        // 初始化 Supabase 客户端
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // 15 讲基础目录定义（用于渲染树和标题）
+        const knowledgePointNames = {
+            1: "第1讲 整数巧算",
+            2: "第2讲 年龄问题",
+            3: "第3讲 页码问题",
+            4: "第4讲 加乘原理 II",
+            5: "第5讲 整数分拆",
+            6: "第6讲 平行四边形与梯形",
+            7: "第7讲 标数法",
+            8: "第8讲 简易方程 I",
+            9: "第9讲 带余除法 II",
+            10: "第10讲 点线排布",
+            11: "第11讲 统筹与最优化",
+            12: "第12讲 列方程解应用题",
+            13: "第13讲 大数巧算",
+            14: "第14讲 容斥原理 II",
+            15: "第15讲 行程问题"
         };
 
-        // ==================== 2. 状态管理器 ====================
+        // ==================== 2. 用户本地进度管理器 ====================
         let userProgress = {};
 
         function initProgress() {
-            // 使用 v3 版本缓存标识，确保更换新课名后缓存能自动更新
             const saved = localStorage.getItem('egg_notes_progress_v3');
             if (saved) {
                 userProgress = JSON.parse(saved);
@@ -373,8 +277,7 @@
                 labelText.setAttribute('text-anchor', 'middle');
                 labelText.setAttribute('class', 'halo-text');
 
-                // 提取“第X讲 ”后面的简称
-                const fullName = questionsData[id].name;
+                const fullName = knowledgePointNames[id];
                 const shortName = fullName.replace(/^第\d+讲\s*/, '').trim();
                 labelText.textContent = shortName;
                 group.appendChild(labelText);
@@ -400,20 +303,46 @@
             document.getElementById('stat-red').textContent = redCount;
         }
 
-        // ==================== 5. 弹窗与填空答题逻辑 ====================
+        // ==================== 5. Supabase 异步拉取与刷题逻辑 ====================
         let currentActiveNodeId = null;
+        let currentActiveQuestions = []; // 当前从云端拉取到的题目列表
         let currentQuestionIndex = 0;
         let isAnswered = false;
 
-        function openQuiz(nodeId) {
+        async function openQuiz(nodeId) {
             currentActiveNodeId = nodeId;
             currentQuestionIndex = 0;
+            currentActiveQuestions = [];
             
             const modal = document.getElementById('quiz-modal');
             modal.classList.remove('hidden');
             
             updateModalUI();
-            loadQuestion();
+            showLoadingState();
+
+            // 向 Supabase 发起数据请求
+            try {
+                const { data, error } = await supabaseClient
+                    .from(TABLE_NAME)
+                    .select('*')
+                    .eq('kp_id', nodeId);
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    currentActiveQuestions = data.map(item => ({
+                        q: item.question,
+                        answer: item.answer
+                    }));
+                    document.getElementById('input-container').classList.remove('hidden');
+                    loadQuestion();
+                } else {
+                    showEmptyState("暂无题目，请在 Supabase 后台导入该讲的 CSV 数据。");
+                }
+            } catch (err) {
+                console.error("Supabase 读取失败:", err);
+                showEmptyState("网络连接失败或数据未配置，请检查网络后再试。");
+            }
         }
 
         function closeModal() {
@@ -423,10 +352,10 @@
 
         function updateModalUI() {
             const progress = userProgress[currentActiveNodeId];
-            const data = questionsData[currentActiveNodeId];
+            const fullName = knowledgePointNames[currentActiveNodeId];
 
             document.getElementById('modal-tag').textContent = `第 ${currentActiveNodeId} 讲`;
-            document.getElementById('modal-title').textContent = data.name;
+            document.getElementById('modal-title').textContent = fullName;
 
             const statusText = document.getElementById('modal-status');
             const streakText = document.getElementById('modal-streak');
@@ -445,12 +374,35 @@
             }
         }
 
+        function showLoadingState() {
+            document.getElementById('question-text').textContent = "正在从 Supabase 云端加载题目...";
+            document.getElementById('input-container').classList.add('hidden');
+            document.getElementById('feedback-box').className = 'hidden';
+            
+            const actionBtn = document.getElementById('action-btn');
+            actionBtn.disabled = true;
+            actionBtn.textContent = "加载中...";
+            actionBtn.className = "w-full py-3 rounded-xl font-semibold bg-gray-200 text-gray-400 cursor-not-allowed";
+        }
+
+        function showEmptyState(msg) {
+            document.getElementById('question-text').textContent = msg;
+            document.getElementById('input-container').classList.add('hidden');
+            document.getElementById('feedback-box').className = 'hidden';
+
+            const actionBtn = document.getElementById('action-btn');
+            actionBtn.disabled = true;
+            actionBtn.textContent = "无可用题目";
+            actionBtn.className = "w-full py-3 rounded-xl font-semibold bg-gray-200 text-gray-400 cursor-not-allowed";
+        }
+
         function loadQuestion() {
+            if (!currentActiveQuestions || currentActiveQuestions.length === 0) return;
+
             isAnswered = false;
 
-            const data = questionsData[currentActiveNodeId];
-            const qIndex = currentQuestionIndex % data.questions.length;
-            const currentQ = data.questions[qIndex];
+            const qIndex = currentQuestionIndex % currentActiveQuestions.length;
+            const currentQ = currentActiveQuestions[qIndex];
 
             document.getElementById('question-text').textContent = currentQ.q;
 
@@ -466,11 +418,9 @@
             actionBtn.textContent = "请先输入答案";
             actionBtn.className = "w-full py-3 rounded-xl font-semibold transition bg-gray-200 text-gray-400 cursor-not-allowed";
 
-            // 自动聚焦输入框
             setTimeout(() => inputElem.focus(), 100);
         }
 
-        // 监听输入框变动
         function handleInputChange() {
             if (isAnswered) return;
 
@@ -488,11 +438,11 @@
             }
         }
 
-        // 点击“确认提交”或“下一题”
         function handleActionClick() {
-            const data = questionsData[currentActiveNodeId];
-            const qIndex = currentQuestionIndex % data.questions.length;
-            const currentQ = data.questions[qIndex];
+            if (!currentActiveQuestions || currentActiveQuestions.length === 0) return;
+
+            const qIndex = currentQuestionIndex % currentActiveQuestions.length;
+            const currentQ = currentActiveQuestions[qIndex];
 
             const feedbackBox = document.getElementById('feedback-box');
             const actionBtn = document.getElementById('action-btn');
@@ -503,9 +453,9 @@
                 if (userVal === '') return;
 
                 isAnswered = true;
-                inputElem.disabled = true; // 锁定输入框
+                inputElem.disabled = true;
 
-                // 答案判断：忽略前后空格并转换为字符串对比
+                // 判断逻辑：不区分大小写，自动消除前后空格
                 const isCorrect = (userVal.toLowerCase() === String(currentQ.answer).trim().toLowerCase());
 
                 const progress = userProgress[currentActiveNodeId];
