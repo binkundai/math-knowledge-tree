@@ -65,8 +65,12 @@
     <!-- 刷题弹窗 (Modal) -->
     <div id="quiz-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative animate-fade-in">
-            <!-- 关闭按钮 -->
-            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">＆times;</button>
+            <!-- 改进的关闭按钮：使用优雅的 SVG X 图标 -->
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 rounded-lg transition" aria-label="关闭">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
             
             <!-- 知识点名称 -->
             <div class="mb-2">
@@ -92,17 +96,15 @@
             <!-- 反馈提示 -->
             <div id="feedback-box" class="hidden mb-4 p-3 rounded-lg text-sm text-center font-semibold"></div>
 
-            <!-- 按钮 -->
-            <button id="next-btn" class="w-full bg-amber-600 text-white py-3 rounded-xl font-semibold hover:bg-amber-700 transition hidden" onclick="loadNextQuestion()">
-                下一题
+            <!-- 改进的多功能操作按钮（确认/下一题） -->
+            <button id="action-btn" class="w-full py-3 rounded-xl font-semibold transition" onclick="handleActionClick()">
+                请先选择一个答案
             </button>
         </div>
     </div>
 
     <script>
         // ==================== 1. 题库数据配置 ====================
-        // 在这里配置您的15个知识点，以及每个知识点的题库。
-        // 您可以添加任意数量的题目，系统会在用户点击时循环提取。
         const questionsData = {
             1: {
                 name: "1. 两位数乘法",
@@ -130,13 +132,12 @@
             10: { name: "10. 认读钟表", questions: [{ q: "分针走一大格是几分钟？", options: ["1分钟", "5分钟", "10分钟", "12分钟"], correct: 1 }, { q: "时针从3走到6，经过了多久？", options: ["3分钟", "15分钟", "3小时", "6小时"], correct: 2 }, { q: "秒针走一圈，分针走几小格？", options: ["1小格", "5小格", "12小格", "60小格"], correct: 0 }] },
             11: { name: "11. 轴对称图形", questions: [{ q: "下列哪个汉字是轴对称图形？", options: ["中", "国", "吉", "A和C都是"], correct: 3 }, { q: "正方形有几条对称轴？", options: ["2条", "4条", "8条", "无数条"], correct: 1 }, { q: "等边三角形有几条对称轴？", options: ["1条", "2条", "3条", "0条"], correct: 2 }] },
             12: { name: "12. 数据的整理", questions: [{ q: "统计图里最常用来表示数量多少的是？", options: ["条形统计图", "折线统计图", "扇形统计图", "表格"], correct: 0 }, { q: "平均数能代表什么？", options: ["最大值", "最小值", "整体平均水平", "最中间的数"], correct: 2 }, { q: "有3个班，平均每班40人，总人数是？", options: ["40人", "120人", "80人", "160人"], correct: 1 }] },
-            13: { name: "13. 搭配问题", questions: [{ q: "2件上衣和3条裤子，一共有几种穿法？", options: ["5种", "6种", "8种", "9种"], correct: 1 }, { q: "有3个小朋友，每两人握一次手，共握几次？", options: ["3次", "6次", "9次", "4次"], correct: 0 }, { q: "1、2、3三个数字能组成几个不同的两位数？", options: ["3个", "6个", "9个", "4个"], correct: 1 }] },
+            13: { name: "13. 搭配问题", questions: [{ q: "2件上衣 and 3条裤子，一共有几种穿法？", options: ["5种", "6种", "8种", "9种"], correct: 1 }, { q: "有3个小朋友，每两人握一次手，共握几次？", options: ["3次", "6次", "9次", "4次"], correct: 0 }, { q: "1、2、3三个数字能组成几个不同的两位数？", options: ["3个", "6个", "9个", "4个"], correct: 1 }] },
             14: { name: "14. 周期规律", questions: [{ q: "按“红黄蓝红黄蓝...”排列，第10个是什么颜色？", options: ["红", "黄", "蓝", "无法确定"], correct: 0 }, { q: "按“AABBAABB...”排列，第15个字母是？", options: ["A", "B", "C", "D"], correct: 1 }, { q: "今天是星期一，再过8天是星期几？", options: ["星期一", "星期二", "星期三", "星期日"], correct: 1 }] },
             15: { name: "15. 简单重叠问题", questions: [{ q: "排队时，小明从前数第5，从后数第4，这队共几人？", options: ["9人", "8人", "7人", "10人"], correct: 1 }, { q: "两张10厘米的纸条重叠2厘米粘在一起，总长？", options: ["20厘米", "18厘米", "16厘米", "19厘米"], correct: 1 }, { q: "班里有8人喜欢画画，7人喜欢唱歌，其中3人两样都喜欢，班里共有多少人？", options: ["15人", "12人", "11人", "18人"], correct: 1 }] }
         };
 
         // ==================== 2. 状态管理器 ====================
-        // 使用 localStorage 存储用户进度
         let userProgress = {};
 
         function initProgress() {
@@ -169,7 +170,6 @@
         }
 
         // ==================== 3. 动态绘制知识树 ====================
-        // 配置颜色值
         const colors = {
             red: { node: '#FF4D4F', branch: '#FFA39E', glow: 'rgba(255, 77, 79, 0.4)' },
             yellow: { node: '#FFC53D', branch: '#FFE58F', glow: 'rgba(255, 197, 61, 0.4)' },
@@ -183,10 +183,9 @@
             nodesGroup.innerHTML = '';
 
             const trunkX = 400;
-            const trunkY = 550; // 树干分叉的起点
+            const trunkY = 550;
             const totalNodes = 15;
 
-            // 扇形分布角度：从 195度 到 345度
             const startAngle = 195;
             const endAngle = 345;
             const angleStep = (endAngle - startAngle) / (totalNodes - 1);
@@ -196,18 +195,13 @@
                 const state = userProgress[id].status;
                 const colorConfig = colors[state];
 
-                // 角度计算
                 const angleDeg = startAngle + i * angleStep;
                 const angleRad = (angleDeg * Math.PI) / 180;
-
-                // 交替树枝长度，使树看起来更自然、错落有致
                 const radius = i % 2 === 0 ? 330 : 250;
 
-                // 节点终点坐标
                 const targetX = trunkX + radius * Math.cos(angleRad);
                 const targetY = trunkY + radius * Math.sin(angleRad);
 
-                // 绘制弯曲的树枝 (使用贝塞尔曲线，控制点向外微调)
                 const ctrlX = trunkX + (targetX - trunkX) * 0.25;
                 const ctrlY = trunkY + (targetY - trunkY) * 0.55;
 
@@ -219,12 +213,10 @@
                 branchPath.setAttribute('class', 'branch-path');
                 branchesGroup.appendChild(branchPath);
 
-                // 绘制节点组 (圆圈 + 文字)
                 const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
                 group.setAttribute('class', 'cursor-pointer');
                 group.onclick = () => openQuiz(id);
 
-                // 发光滤镜
                 const filterId = `glow-${id}`;
                 group.innerHTML = `
                     <defs>
@@ -238,7 +230,6 @@
                     </defs>
                 `;
 
-                // 绘制圆形节点
                 const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 circle.setAttribute('cx', targetX);
                 circle.setAttribute('cy', targetY);
@@ -248,7 +239,6 @@
                 circle.setAttribute('filter', `url(#${filterId})`);
                 group.appendChild(circle);
 
-                // 绘制节点编号/缩写标签
                 const textNum = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 textNum.setAttribute('x', targetX);
                 textNum.setAttribute('y', targetY + 5);
@@ -259,7 +249,6 @@
                 textNum.textContent = id;
                 group.appendChild(textNum);
 
-                // 绘制知识点中文标注（放置在圆圈上方或下方）
                 const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 labelText.setAttribute('x', targetX);
                 labelText.setAttribute('y', targetY + (targetY > trunkY ? 40 : -32));
@@ -267,7 +256,6 @@
                 labelText.setAttribute('font-size', '12');
                 labelText.setAttribute('font-weight', '500');
                 labelText.setAttribute('text-anchor', 'middle');
-                // 截取知识点前几字展示，避免字数过多重叠
                 const shortName = questionsData[id].name.split('.')[1].trim();
                 labelText.textContent = shortName;
                 group.appendChild(labelText);
@@ -296,6 +284,8 @@
         // ==================== 5. 弹窗和答题逻辑 ====================
         let currentActiveNodeId = null;
         let currentQuestionIndex = 0;
+        let selectedOptionIdx = null;  // 记录当前点击选择但尚未确认的选项
+        let isAnswered = false;        // 是否已经点击了确认
 
         function openQuiz(nodeId) {
             currentActiveNodeId = nodeId;
@@ -335,15 +325,13 @@
                 statusText.textContent = '未掌握';
                 statusText.className = 'text-rose-500 font-bold';
             }
-
-            // 隐藏反馈区和“下一题”按钮
-            document.getElementById('feedback-box').className = 'hidden mb-4 p-3 rounded-lg text-sm text-center font-semibold';
-            document.getElementById('next-btn').classList.add('hidden');
         }
 
         function loadQuestion() {
+            selectedOptionIdx = null;
+            isAnswered = false;
+
             const data = questionsData[currentActiveNodeId];
-            // 循环提取题库中的题目
             const qIndex = currentQuestionIndex % data.questions.length;
             const currentQ = data.questions[qIndex];
 
@@ -352,67 +340,122 @@
             const optionsBox = document.getElementById('options-box');
             optionsBox.innerHTML = '';
 
+            // 绘制初始选项
             currentQ.options.forEach((opt, idx) => {
                 const btn = document.createElement('button');
-                btn.className = "w-full text-left p-3 border border-gray-200 rounded-xl hover:bg-amber-50 hover:border-amber-300 transition text-sm text-gray-700 font-medium flex items-center justify-between";
+                btn.id = `opt-btn-${idx}`;
+                btn.className = "w-full text-left p-3 border border-gray-200 rounded-xl hover:bg-amber-50/50 hover:border-amber-300 transition text-sm text-gray-700 font-medium flex items-center justify-between";
                 btn.innerHTML = `<span>${String.fromCharCode(65 + idx)}. ${opt}</span>`;
-                btn.onclick = () => selectOption(idx, currentQ.correct);
+                btn.onclick = () => selectOption(idx);
                 optionsBox.appendChild(btn);
             });
-        }
 
-        function selectOption(selectedIdx, correctIdx) {
-            const feedbackBox = document.getElementById('feedback-box');
-            const optionsBox = document.getElementById('options-box');
+            // 隐藏反馈区
+            document.getElementById('feedback-box').className = 'hidden mb-4 p-3 rounded-lg text-sm text-center font-semibold';
             
-            // 锁定所有按钮，防止重复点击
-            Array.from(optionsBox.children).forEach((btn, idx) => {
-                btn.disabled = true;
-                if (idx === correctIdx) {
-                    btn.classList.add('bg-emerald-50', 'border-emerald-500', 'text-emerald-700');
-                } else if (idx === selectedIdx) {
-                    btn.classList.add('bg-rose-50', 'border-rose-500', 'text-rose-700');
-                }
-            });
-
-            const progress = userProgress[currentActiveNodeId];
-            progress.attempted = true;
-
-            if (selectedIdx === correctIdx) {
-                // 回答正确
-                progress.consecutiveCorrect += 1;
-                feedbackBox.textContent = "回答正确！🎉 连续答对次数 +1";
-                feedbackBox.className = "mb-4 p-3 rounded-lg text-sm text-center font-semibold bg-emerald-100 text-emerald-800 block";
-            } else {
-                // 回答错误，连对清零
-                progress.consecutiveCorrect = 0;
-                feedbackBox.textContent = "回答错误。😢 连续答对清零，再接再厉！";
-                feedbackBox.className = "mb-4 p-3 rounded-lg text-sm text-center font-semibold bg-rose-100 text-rose-800 block";
-            }
-
-            // 更新状态颜色判定逻辑
-            if (progress.consecutiveCorrect >= 3) {
-                progress.status = 'green';
-            } else {
-                // 只要做过（attempted 为 true），即使没有连对3次，也是黄色
-                progress.status = 'yellow';
-            }
-
-            saveProgress();
-            renderTree();
-            updateStats();
-
-            // 更新弹窗上的即时状态显示
-            updateModalUI();
-
-            // 显示“下一题”按钮
-            document.getElementById('next-btn').classList.remove('hidden');
+            // 初始化底部操作按钮为禁用状态（不做选择无法进行下一步）
+            const actionBtn = document.getElementById('action-btn');
+            actionBtn.disabled = true;
+            actionBtn.textContent = "请先选择一个答案";
+            actionBtn.className = "w-full py-3 rounded-xl font-semibold transition bg-gray-200 text-gray-400 cursor-not-allowed";
         }
 
-        function loadNextQuestion() {
-            currentQuestionIndex++;
-            updateModalUI();
-            loadQuestion();
+        // 第一步：点击选项（未确认前，允许用户随意更换调整选择）
+        function selectOption(idx) {
+            if (isAnswered) return; // 已确认提交，则不能再更换选项
+
+            selectedOptionIdx = idx;
+
+            const data = questionsData[currentActiveNodeId];
+            const qIndex = currentQuestionIndex % data.questions.length;
+            const currentQ = data.questions[qIndex];
+
+            // 重新刷新选项高亮状态
+            for (let i = 0; i < currentQ.options.length; i++) {
+                const btn = document.getElementById(`opt-btn-${i}`);
+                if (i === idx) {
+                    // 高亮选中项为金黄色边框
+                    btn.className = "w-full text-left p-3 border-2 border-amber-500 bg-amber-50/70 rounded-xl transition text-sm text-amber-900 font-semibold flex items-center justify-between";
+                } else {
+                    // 其他选项恢复默认
+                    btn.className = "w-full text-left p-3 border border-gray-200 rounded-xl hover:bg-amber-50/50 hover:border-amber-300 transition text-sm text-gray-700 font-medium flex items-center justify-between";
+                }
+            }
+
+            // 开启下方“确认选择”按钮
+            const actionBtn = document.getElementById('action-btn');
+            actionBtn.disabled = false;
+            actionBtn.textContent = "确认选择";
+            actionBtn.className = "w-full py-3 rounded-xl font-semibold transition bg-amber-600 text-white hover:bg-amber-700 cursor-pointer";
+        }
+
+        // 第二步：处理底部按钮的点击事件（作为“确认选择”和“下一题”的多功能切换点）
+        function handleActionClick() {
+            const data = questionsData[currentActiveNodeId];
+            const qIndex = currentQuestionIndex % data.questions.length;
+            const currentQ = data.questions[qIndex];
+            const correctIdx = currentQ.correct;
+
+            const feedbackBox = document.getElementById('feedback-box');
+            const actionBtn = document.getElementById('action-btn');
+
+            if (!isAnswered) {
+                // 情况一：用户点击“确认选择” —— 进行结果核算并展示正误
+                isAnswered = true;
+
+                // 禁用选项点击
+                for (let i = 0; i < currentQ.options.length; i++) {
+                    const btn = document.getElementById(`opt-btn-${i}`);
+                    btn.onclick = null; // 移除事件
+                    btn.style.cursor = 'default';
+                    
+                    // 显示正确与错误视觉反馈
+                    if (i === correctIdx) {
+                        // 正确项高亮为绿色
+                        btn.className = "w-full text-left p-3 border-2 border-emerald-500 bg-emerald-50 rounded-xl transition text-sm text-emerald-800 font-semibold flex items-center justify-between";
+                    } else if (i === selectedOptionIdx) {
+                        // 用户选错的项标红
+                        btn.className = "w-full text-left p-3 border-2 border-rose-500 bg-rose-50 rounded-xl transition text-sm text-rose-800 font-semibold flex items-center justify-between";
+                    } else {
+                        btn.className = "w-full text-left p-3 border border-gray-100 rounded-xl transition text-sm text-gray-400 flex items-center justify-between";
+                    }
+                }
+
+                const progress = userProgress[currentActiveNodeId];
+                progress.attempted = true;
+
+                if (selectedOptionIdx === correctIdx) {
+                    // 正确
+                    progress.consecutiveCorrect += 1;
+                    feedbackBox.textContent = "回答正确！🎉 连续答对次数 +1";
+                    feedbackBox.className = "mb-4 p-3 rounded-lg text-sm text-center font-semibold bg-emerald-100 text-emerald-800 block";
+                } else {
+                    // 错误，连对清零
+                    progress.consecutiveCorrect = 0;
+                    feedbackBox.textContent = "回答错误。😢 连续答对清零，再接再厉！";
+                    feedbackBox.className = "mb-4 p-3 rounded-lg text-sm text-center font-semibold bg-rose-100 text-rose-800 block";
+                }
+
+                // 进度更新判定
+                if (progress.consecutiveCorrect >= 3) {
+                    progress.status = 'green';
+                } else {
+                    progress.status = 'yellow';
+                }
+
+                saveProgress();
+                renderTree();
+                updateStats();
+                updateModalUI();
+
+                // 锁定答案后，按钮功能立即变更为“下一题”
+                actionBtn.textContent = "下一题";
+
+            } else {
+                // 情况二：用户点击“下一题” —— 加载新题目并恢复选择状态
+                currentQuestionIndex++;
+                loadQuestion();
+            }
         }
 
         // ==================== 6. 初始化启动 ====================
