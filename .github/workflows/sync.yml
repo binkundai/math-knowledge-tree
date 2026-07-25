@@ -17,5 +17,5 @@ jobs:
       - name: 强制同步推送到 Gitee
         run: |
           # ⚠️ 注意：请把下面的【您的Gitee用户名】替换为您在 Gitee 上的真实用户名（区分大小写）
-          git remote add gitee https://daibinkun:${{ secrets.GITEE_TOKEN }}@gitee.com/comoestas/math-knowledge-tree.git
+          git remote add gitee https://daibinkun:${{ secrets.GITEE_TOKEN }}@gitee.com/daibinkun/math-knowledge-tree.git
           git push -f gitee main
