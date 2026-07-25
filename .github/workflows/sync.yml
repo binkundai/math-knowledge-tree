@@ -1,0 +1,19 @@
+name: Sync to Gitee
+
+on:
+  push:
+    branches:
+      - main # 如果你的主分支叫 master，请改成 master
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror the GitHub repo to Gitee
+        uses: Yikun/hub-mirror-action@master
+        with:
+          src: github/binkundai
+          dst: gitee/daibinkun
+          static_list: 'math-knowledge-tree' # 例如 spring-tree
+          gitee_token: ${{ secrets.GITEE_TOKEN }}
+          force_update: true
