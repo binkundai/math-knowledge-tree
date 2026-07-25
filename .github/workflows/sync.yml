@@ -13,7 +13,7 @@ jobs:
         uses: Yikun/hub-mirror-action@master
         with:
           src: github/binkundai
-          dst: gitee/comoestas # ⚠️【重要】：请把“您的Gitee用户名”替换为您在Gitee上的真实用户名！
+          dst: gitee/daibinkun # ⚠️【重要】：请把“您的Gitee用户名”替换为您在Gitee上的真实用户名！
           dst_token: ${{ secrets.GITEE_TOKEN }} # 👈 已修复：将原来的 gitee_token 改为了 dst_token
           static_list: 'math-knowledge-tree'
           force_update: true
