@@ -12,10 +12,10 @@ jobs:
       - name: 检出 GitHub 代码
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # 完整拉取历史记录
+          fetch-depth: 0
 
       - name: 强制同步推送到 Gitee
         run: |
-          # ⚠️ 注意：请把下面的【您的Gitee用户名】替换为您在 Gitee 上的真实用户名（区分大小写）
-          git remote add gitee https://daibinkun:${{ secrets.GITEE_TOKEN }}@gitee.com/daibinkun/math-knowledge-tree.git
+          # 👈 已修复：去掉前缀用户名，直接将 Token 填在 @gitee.com 前面
+          git remote add gitee https://${{ secrets.GITEE_TOKEN }}@gitee.com/daibinkun/math-knowledge-tree.git
           git push -f gitee main
