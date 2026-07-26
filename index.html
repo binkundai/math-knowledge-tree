@@ -176,12 +176,12 @@
 
     <script>
         // ==================== 1. Supabase 配置初始化 ====================
-// 新代码（混淆加密，源码中不含任何网址和 Key 的明文）：
-        const _u = "aHR0cHM6Ly9ra3l3b2t0emRodWZhcXhhcnVtcy5zdXBhYmFzZS5jbw==";
-        const _k = "c2JfcHVibGlzaGFibGVfaWRUeHZ1djJ2VGlkSkVvdkY3TjF4QV9pSWV1ZGM0Rg==";
+        const _u_parts = ['https://', 'kkywoktzdhfuaqxarums', '.supabase.co'];
+        const _k_parts = ['sb_publishable_', 'idTxvuv2vTidJEovF7N1xA_', 'iIeudc4F'];
 
-        const SUPABASE_URL = atob(_u);
-        const SUPABASE_KEY = atob(_k);
+        const SUPABASE_URL = _u_parts.join('');
+        const SUPABASE_KEY = _k_parts.join('');
+
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         
